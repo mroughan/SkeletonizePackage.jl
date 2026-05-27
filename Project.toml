@@ -1,0 +1,24 @@
+name = "SkeletonPackages"
+uuid = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
+authors = ["Matthew Roughan and contributors"]
+version = "0.1.0"
+
+[deps]
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[compat]
+Aqua = "0.8"
+Documenter = "1"
+JET = "0.9, 0.10, 0.11"
+TOML = "1"
+Test = "1"
+julia = "1.10"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "JET", "Documenter", "Test"]

@@ -1,0 +1,6 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+SkeletonPackages = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
+
+[compat]
+Documenter = "1"

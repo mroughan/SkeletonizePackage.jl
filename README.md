@@ -1,5 +1,11 @@
 # SkeletonPackages.jl
 
+[![CI](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/CI.yml)
+[![Documentation](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/Documentation.yml/badge.svg)](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/Documentation.yml)
+[![codecov](https://codecov.io/gh/mroughan/SkeletonPackages.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/mroughan/SkeletonPackages.jl)
+[![Julia](https://img.shields.io/badge/julia-1.10%2B-blue.svg)](https://julialang.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 `SkeletonPackages.jl` is a teaching-oriented metapackage for generating student
 starter packages from teacher solution packages.
 
@@ -14,7 +20,29 @@ generate_student_package("examples/SortingAssignment", "SortingAssignmentStudent
 ```
 
 The generated package keeps starter implementations and public tests, while
-removing solution blocks and hidden tests.
+removing solution blocks and hidden tests. It also adds
+`STUDENT_INSTRUCTIONS.md`, a generic guide for students who are new to Julia
+packages, local environments, dependency installation, and running tests.
+
+If the destination already exists, pass `force=true`:
+
+```julia
+generate_student_package("examples/SortingAssignment", "SortingAssignmentStudent"; force=true)
+```
+
+You can also validate the teacher package before generating:
+
+```julia
+report = validate_teacher_package("examples/SortingAssignment"; io=stdout)
+isvalid(report)
+```
+
+Or use the small command-line entry point:
+
+```bash
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentStudent
+```
 
 ```text
 X.jl  teacher reference package
@@ -44,6 +72,17 @@ function mysort(xs)
     end
 end
 ```
+
+Supported annotation openers must appear on their own line:
+
+```julia
+@solution begin
+    # teacher-only body
+end
+```
+
+Inline annotation forms are reported by `validate_teacher_package` and are not
+transformed.
 
 Visible and hidden tests can be marked similarly:
 
@@ -75,12 +114,27 @@ contains:
 - `@student_test` tests that students can see.
 - `@hidden_test` tests that teachers can keep for grading.
 
+To create a new starter teacher package:
+
+```julia
+create_assignment("MyAssignment")
+```
+
+This writes a small package template and a `SkeletonPackages.toml` config file.
+The config can be used directly:
+
+```julia
+generate_student_package("MyAssignment/SkeletonPackages.toml")
+```
+
 ## Current status
 
-This is an intentionally small first version. It uses line-oriented transformations
-and assumes annotation macros appear on their own lines. Future versions should
-replace this with a concrete syntax tree transformation using `JuliaSyntax.jl` or
-a similar parser.
+This is still an early package, but it now validates teacher packages before
+generation and reports both blocking transformation errors and teaching-design
+warnings. Validation also checks that Julia source parses before and after
+annotation removal. The transformer remains conservative: annotation macros must
+appear on their own line. Future versions may replace the text transformer with
+a concrete syntax tree transformation using `JuliaSyntax.jl` or a similar parser.
 
 ## AI use disclosure
 

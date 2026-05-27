@@ -1,0 +1,32 @@
+# Julia artifacts
+*.cov
+*.mem
+*.ji
+*.so
+*.dylib
+*.dll
+
+# Local manifests generated during development/docs builds.
+# Julia libraries commonly leave these untracked; applications may choose to commit them.
+Manifest.toml
+docs/Manifest.toml
+
+# Documenter output. Build locally for review, deploy from CI.
+docs/build/
+
+# Generated student packages and assignment scratch output.
+*Student/
+SortingAssignmentStudent/
+
+# Local environment and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local Codex/agent workspace metadata
+.agents/
+.codex/

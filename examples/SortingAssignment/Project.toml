@@ -1,0 +1,7 @@
+name = "SortingAssignment"
+uuid = "51276740-6a1a-489c-bbe0-5cf8975a6818"
+version = "0.1.0"
+
+[deps]
+SkeletonPackages = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
