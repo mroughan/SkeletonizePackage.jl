@@ -127,6 +127,20 @@ The config can be used directly:
 generate_student_package("MyAssignment/SkeletonPackages.toml")
 ```
 
+The config can also include exercise-specific student instructions:
+
+```toml
+[assignment]
+source_path = "."
+student_path = "../MyAssignmentStudent"
+instructions_path = "student_notes.md"
+```
+
+When `instructions_path` is set, that Markdown file is appended to the generated
+`STUDENT_INSTRUCTIONS.md` under an "Exercise-Specific Instructions" heading.
+Annotation blocks in the Markdown file are transformed in student mode, so
+`@starter` content is kept and `@solution` content is removed.
+
 ## Current status
 
 This is still an early package, but it now validates teacher packages before

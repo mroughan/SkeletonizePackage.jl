@@ -60,12 +60,25 @@ student_path = "SortingAssignmentStudent"
 mode = "student"
 force = false
 validate = true
+instructions_path = "student_notes.md"
 ```
 
 Then run:
 
 ```julia
 generate_student_package("SkeletonPackages.toml")
+```
+
+`instructions_path` is optional. When present, the referenced Markdown file is
+included in the generated `STUDENT_INSTRUCTIONS.md` after the generic Julia
+package guide. The path is resolved relative to the config file. Annotation
+blocks in the Markdown file are transformed in student mode.
+
+You may also place the same setting under `[student]`:
+
+```toml
+[student]
+instructions_path = "student_notes.md"
 ```
 
 ## Templates

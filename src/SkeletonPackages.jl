@@ -195,7 +195,9 @@ end
 Configuration for generating a student package.
 
 Use [`read_assignment_config`](@ref) or pass a `SkeletonPackages.toml` file to
-[`generate_student_package`](@ref) to construct this from TOML.
+[`generate_student_package`](@ref) to construct this from TOML. `instructions_path`
+is optional and points to Markdown that should be appended to the generated
+student instructions.
 """
 struct AssignmentConfig
     source_path::String
@@ -203,6 +205,7 @@ struct AssignmentConfig
     mode::Symbol
     force::Bool
     validate::Bool
+    instructions_path::Union{Nothing, String}
 end
 
 """
@@ -219,11 +222,15 @@ student_path = "SortingAssignmentStudent"
 mode = "student"
 force = false
 validate = true
+instructions_path = "student_notes.md"
 ```
+
+`instructions_path` may also be placed under `[student]`.
 """
 function read_assignment_config(path::AbstractString="SkeletonPackages.toml")
     data = TOML.parsefile(path)
     assignment = get(data, "assignment", Dict{String, Any}())
+    student_section = get(data, "student", Dict{String, Any}())
     base = dirname(abspath(path))
     source = get(assignment, "source_path", get(assignment, "source", ""))
     student = get(assignment, "student_path", get(assignment, "student_package", ""))
@@ -232,7 +239,9 @@ function read_assignment_config(path::AbstractString="SkeletonPackages.toml")
     mode = Symbol(get(assignment, "mode", "student"))
     force = Bool(get(assignment, "force", false))
     validate = Bool(get(assignment, "validate", true))
-    return AssignmentConfig(_config_path(base, source), _config_path(base, student), mode, force, validate)
+    instructions = get(assignment, "instructions_path", get(student_section, "instructions_path", nothing))
+    instructions_path = instructions === nothing ? nothing : _config_path(base, String(instructions))
+    return AssignmentConfig(_config_path(base, source), _config_path(base, student), mode, force, validate, instructions_path)
 end
 
 function _config_path(base::AbstractString, path::AbstractString)
@@ -374,7 +383,7 @@ function _push_issue!(issues, severity, path, line, message, suggestion)
 end
 
 """
-    generate_student_package(source_path, dest_path; mode=:student, force=false, validate=true, io=stderr)
+    generate_student_package(source_path, dest_path; mode=:student, force=false, validate=true, instructions_path=nothing, io=stderr)
     generate_student_package(config::AssignmentConfig; io=stderr)
     generate_student_package(config_path::AbstractString; io=stderr)
 
@@ -386,8 +395,12 @@ block generation; warnings and notes are printed to `io`.
 
 Existing contents of `dest_path` are preserved unless `force=true`. The generated
 path is returned. Directories named `.git`, `build`, and `solutions` are skipped.
+
+Pass `instructions_path` to append exercise-specific teacher instructions to the
+generated `STUDENT_INSTRUCTIONS.md`. Relative paths in `SkeletonPackages.toml`
+are resolved from the config file's directory.
 """
-function generate_student_package(source_path::AbstractString, dest_path::AbstractString; mode::Symbol=:student, force::Bool=false, validate::Bool=true, io::Union{Nothing, IO}=stderr)
+function generate_student_package(source_path::AbstractString, dest_path::AbstractString; mode::Symbol=:student, force::Bool=false, validate::Bool=true, instructions_path::Union{Nothing, AbstractString}=nothing, io::Union{Nothing, IO}=stderr)
     src = abspath(source_path)
     dst = abspath(dest_path)
     isdir(src) || throw(ArgumentError("source_path is not a directory: $source_path"))
@@ -416,12 +429,12 @@ function generate_student_package(source_path::AbstractString, dest_path::Abstra
             end
         end
     end
-    _write_student_instructions(dst)
+    _write_student_instructions(dst; instructions_path=instructions_path)
     return dst
 end
 
 function generate_student_package(config::AssignmentConfig; io::Union{Nothing, IO}=stderr)
-    return generate_student_package(config.source_path, config.student_path; mode=config.mode, force=config.force, validate=config.validate, io=io)
+    return generate_student_package(config.source_path, config.student_path; mode=config.mode, force=config.force, validate=config.validate, instructions_path=config.instructions_path, io=io)
 end
 
 function generate_student_package(config_path::AbstractString; io::Union{Nothing, IO}=stderr)
@@ -491,6 +504,14 @@ end
     @test answer() == 42
 end
 """)
+    write(joinpath(root, "student_notes.md"), """
+# Assignment Notes
+
+Replace this section with instructions that are specific to this exercise.
+
+For example, describe the problem, the functions students should implement, any
+restrictions on allowed Julia features or packages, and what they should submit.
+""")
     write(joinpath(root, "SkeletonPackages.toml"), """
 [assignment]
 source_path = "."
@@ -498,6 +519,7 @@ student_path = "../$(module_name)Student"
 mode = "student"
 force = false
 validate = true
+instructions_path = "student_notes.md"
 """)
     return root
 end
@@ -508,8 +530,9 @@ function _module_name(name)
     occursin(r"^[A-Za-z_]", cleaned) ? cleaned : "Assignment$cleaned"
 end
 
-function _write_student_instructions(dst::AbstractString)
+function _write_student_instructions(dst::AbstractString; instructions_path::Union{Nothing, AbstractString}=nothing)
     package_name = _project_name(dst)
+    exercise_instructions = _exercise_instructions(instructions_path)
     write(joinpath(dst, "STUDENT_INSTRUCTIONS.md"), """
 # Getting Started with `$package_name`
 
@@ -615,7 +638,21 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
 Submit the completed package folder according to your teacher's instructions.
+$(exercise_instructions)
 """)
+end
+
+function _exercise_instructions(instructions_path::Union{Nothing, AbstractString})
+    instructions_path === nothing && return ""
+    isfile(instructions_path) || throw(ArgumentError("instructions_path is not a file: $instructions_path"))
+    text = read(instructions_path, String)
+    transformed = strip_teacher_annotations(text; mode=:student)
+    return """
+
+## Exercise-Specific Instructions
+
+$(rstrip(transformed))
+"""
 end
 
 function _project_name(path::AbstractString)
@@ -715,7 +752,7 @@ function _main_generate(args)
         deleteat!(args, config_index:config_index + 1)
         isempty(args) || throw(ArgumentError("unexpected arguments: $(join(args, " "))"))
         config = read_assignment_config(config_path)
-        config = AssignmentConfig(config.source_path, config.student_path, config.mode, force || config.force, validate && config.validate)
+        config = AssignmentConfig(config.source_path, config.student_path, config.mode, force || config.force, validate && config.validate, config.instructions_path)
         println(generate_student_package(config; io=stderr))
         return 0
     end

@@ -88,7 +88,21 @@ f(x) = begin
 end
 end
 """)
-    generate_student_package(src, dst; io=nothing)
+    custom_notes = joinpath(src, "student_notes.md")
+    write(custom_notes, """
+# Demo Task
+
+Implement `f`.
+
+@solution begin
+Teacher-only reminder.
+end
+
+@starter begin
+Student-facing hint.
+end
+""")
+    generate_student_package(src, dst; instructions_path=custom_notes, io=nothing)
     @test isfile(joinpath(dst, "src", "Demo.jl"))
     @test isfile(joinpath(dst, "STUDENT_INSTRUCTIONS.md"))
     text = read(joinpath(dst, "src", "Demo.jl"), String)
@@ -99,6 +113,10 @@ end
     @test occursin("Pkg.instantiate()", instructions)
     @test occursin("Pkg.test()", instructions)
     @test occursin("src/", instructions)
+    @test occursin("Exercise-Specific Instructions", instructions)
+    @test occursin("Implement `f`.", instructions)
+    @test occursin("Student-facing hint.", instructions)
+    @test !occursin("Teacher-only reminder.", instructions)
 
     teacher_dst = joinpath(tmp, "Teacher")
     generate_student_package(src, teacher_dst; mode=:teacher, io=nothing)
@@ -150,12 +168,15 @@ end
 
     config = SkeletonPackages.read_assignment_config(joinpath(assignment, "SkeletonPackages.toml"))
     @test config.mode == :student
+    @test config.instructions_path == joinpath(assignment, "student_notes.md")
     generated = generate_student_package(config; io=nothing)
     @test isfile(joinpath(generated, "src", "DemoAssignment.jl"))
     @test isfile(joinpath(generated, "STUDENT_INSTRUCTIONS.md"))
     text = read(joinpath(generated, "src", "DemoAssignment.jl"), String)
     @test occursin("TODO", text)
     @test !occursin("return 42", text)
+    instructions = read(joinpath(generated, "STUDENT_INSTRUCTIONS.md"), String)
+    @test occursin("Assignment Notes", instructions)
 end
 
 @testset "grade result" begin

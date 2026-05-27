@@ -84,6 +84,7 @@ source_path = "examples/SortingAssignment"
 student_path = "SortingAssignmentStudent"
 force = false
 validate = true
+instructions_path = "student_notes.md"
 
 [visibility]
 default = "student"
