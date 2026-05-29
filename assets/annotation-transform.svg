@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="320" viewBox="0 0 920 320" role="img" aria-labelledby="title desc">
+  <title id="title">Annotation transformation from teacher package to student package</title>
+  <desc id="desc">SkeletonPackages keeps starter code and public tests for students while removing solution code and hidden tests.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f4858"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-15%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1f2933" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="920" height="320" fill="#f7fafc"/>
+  <g font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+    <g filter="url(#shadow)">
+      <rect x="48" y="54" width="270" height="212" rx="8" fill="#ffffff" stroke="#5b8def" stroke-width="2"/>
+      <rect x="590" y="54" width="270" height="212" rx="8" fill="#ffffff" stroke="#49a078" stroke-width="2"/>
+      <rect x="374" y="116" width="172" height="88" rx="8" fill="#ffffff" stroke="#2f4858" stroke-width="2"/>
+    </g>
+    <text x="183" y="88" text-anchor="middle" font-size="19" font-weight="700" fill="#17212b">Teacher package</text>
+    <text x="725" y="88" text-anchor="middle" font-size="19" font-weight="700" fill="#17212b">Student package</text>
+    <text x="460" y="147" text-anchor="middle" font-size="17" font-weight="700" fill="#17212b">transform</text>
+    <text x="460" y="173" text-anchor="middle" font-size="13" fill="#465866">strip and reveal</text>
+    <path d="M 328 160 H 363" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <path d="M 557 160 H 580" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <g font-size="15">
+      <rect x="78" y="112" width="210" height="30" rx="6" fill="#eaf1ff"/>
+      <text x="94" y="132" fill="#17212b">@solution</text>
+      <text x="201" y="132" fill="#7b2d26">removed</text>
+      <rect x="78" y="152" width="210" height="30" rx="6" fill="#eaf8f0"/>
+      <text x="94" y="172" fill="#17212b">@starter</text>
+      <text x="219" y="172" fill="#24734f">kept</text>
+      <rect x="78" y="192" width="210" height="30" rx="6" fill="#fff5e8"/>
+      <text x="94" y="212" fill="#17212b">@student_test</text>
+      <text x="219" y="212" fill="#24734f">kept</text>
+      <rect x="78" y="232" width="210" height="30" rx="6" fill="#f3edff"/>
+      <text x="94" y="252" fill="#17212b">@hidden_test</text>
+      <text x="201" y="252" fill="#7b2d26">removed</text>
+      <rect x="620" y="126" width="210" height="36" rx="6" fill="#eaf8f0"/>
+      <text x="636" y="149" fill="#17212b">starter implementations</text>
+      <rect x="620" y="178" width="210" height="36" rx="6" fill="#fff5e8"/>
+      <text x="636" y="201" fill="#17212b">public student tests</text>
+      <text x="725" y="244" text-anchor="middle" fill="#465866">plus STUDENT_INSTRUCTIONS.md</text>
+    </g>
+  </g>
+</svg>

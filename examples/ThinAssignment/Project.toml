@@ -1,0 +1,7 @@
+name = "ThinAssignment"
+uuid = "1f8c52d3-a958-4ebe-8657-1b2e04c49442"
+version = "0.1.0"
+
+[deps]
+SkeletonPackages = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

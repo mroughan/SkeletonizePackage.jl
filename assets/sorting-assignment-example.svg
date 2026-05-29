@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="520" viewBox="0 0 920 520" role="img" aria-labelledby="title desc">
+  <title id="title">SortingAssignment annotation example</title>
+  <desc id="desc">A detailed example showing how a teacher mysort implementation and annotated tests become a student starter package with public tests while hidden tests remain teacher-only.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f4858"/>
+    </marker>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1f2933" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .label { font: 700 19px Inter, Segoe UI, Helvetica, Arial, sans-serif; fill: #17212b; }
+      .small { font: 13px Inter, Segoe UI, Helvetica, Arial, sans-serif; fill: #465866; }
+      .code { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #17212b; }
+      .muted-code { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #6b7a86; }
+    </style>
+  </defs>
+  <rect width="920" height="520" fill="#f7fafc"/>
+  <g filter="url(#shadow)">
+    <rect x="36" y="50" width="350" height="398" rx="8" fill="#ffffff" stroke="#5b8def" stroke-width="2"/>
+    <rect x="534" y="50" width="350" height="398" rx="8" fill="#ffffff" stroke="#49a078" stroke-width="2"/>
+    <rect x="298" y="468" width="324" height="30" rx="6" fill="#f3edff" stroke="#8357c5" stroke-width="1.5"/>
+  </g>
+  <text x="211" y="85" text-anchor="middle" class="label">Teacher example package</text>
+  <text x="709" y="85" text-anchor="middle" class="label">Generated student package</text>
+  <text x="460" y="154" text-anchor="middle" class="small">generate_student_package(...)</text>
+  <path d="M 398 180 H 522" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="460" y="491" text-anchor="middle" class="small">Hidden tests are kept outside the student package for grading.</text>
+
+  <g>
+    <rect x="62" y="108" width="298" height="126" rx="6" fill="#eef4ff"/>
+    <text x="78" y="132" class="small">src/SortingAssignment.jl</text>
+    <text x="78" y="160" class="code">function mysort(xs)</text>
+    <text x="96" y="184" class="code">@solution begin</text>
+    <text x="114" y="208" class="code">return sort(xs)</text>
+    <text x="96" y="232" class="code">@starter begin</text>
+  </g>
+  <g>
+    <rect x="62" y="246" width="298" height="162" rx="6" fill="#fff8ec"/>
+    <text x="78" y="270" class="small">test/runtests.jl</text>
+    <text x="78" y="298" class="code">@student_test begin</text>
+    <text x="96" y="322" class="code">@test mysort([2, 1]) == [1, 2]</text>
+    <text x="78" y="354" class="code">@hidden_test begin</text>
+    <text x="96" y="378" class="code">@test mysort(Int[]) == Int[]</text>
+    <text x="96" y="402" class="muted-code">@test mysort([1, 1, 1]) == ...</text>
+  </g>
+
+  <g>
+    <rect x="560" y="108" width="298" height="126" rx="6" fill="#eaf8f0"/>
+    <text x="576" y="132" class="small">src/SortingAssignment.jl</text>
+    <text x="576" y="160" class="code">function mysort(xs)</text>
+    <text x="594" y="184" class="code">error("TODO: implement mysort")</text>
+    <text x="576" y="208" class="code">end</text>
+    <text x="576" y="226" class="small">starter body replaces teacher solution</text>
+  </g>
+  <g>
+    <rect x="560" y="246" width="298" height="162" rx="6" fill="#fff8ec"/>
+    <text x="576" y="270" class="small">test/runtests.jl</text>
+    <text x="576" y="298" class="code">@test mysort([2, 1]) == [1, 2]</text>
+    <text x="576" y="322" class="code">xs = [3, 2, 1]</text>
+    <text x="576" y="346" class="code">@test mysort(xs) == [1, 2, 3]</text>
+    <text x="576" y="378" class="small">public tests remain visible to students</text>
+  </g>
+
+  <g font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+    <rect x="406" y="206" width="108" height="28" rx="14" fill="#eaf8f0" stroke="#49a078"/>
+    <text x="460" y="225" text-anchor="middle" fill="#24734f">keep @starter</text>
+    <rect x="406" y="246" width="108" height="28" rx="14" fill="#fff3f0" stroke="#d36b5d"/>
+    <text x="460" y="265" text-anchor="middle" fill="#7b2d26">drop @solution</text>
+    <rect x="406" y="286" width="108" height="28" rx="14" fill="#fff5e8" stroke="#f2a65a"/>
+    <text x="460" y="305" text-anchor="middle" fill="#7a531f">keep public</text>
+    <rect x="406" y="326" width="108" height="28" rx="14" fill="#f3edff" stroke="#8357c5"/>
+    <text x="460" y="345" text-anchor="middle" fill="#583891">hide private</text>
+  </g>
+</svg>

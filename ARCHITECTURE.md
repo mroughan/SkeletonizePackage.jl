@@ -22,7 +22,7 @@ X.jl  --teacher solution package
   |
   |  strip / transform / reveal selected parts
   v
-Y.jl  --student starter package
+Y.jl  --student skeleton
   |
   |  student completes it
   v
@@ -50,18 +50,40 @@ there is a clear transformation and reporting story for them.
 
 1. The package should not try to be a full Julia parser/reformatter. Instead, it should define a small annotation language that is easy to recognise and transform.
 2. Avoid making @hidden merely deleting code, because deleting code may leave broken syntax. 
-3. Don't try to test if X.jl and Z.jl (the students solution) are exactly the same. Test equivalence through
+3. Don't try to test if X.jl and Z.jl (the students solution) are exactly the same.
 
-    + Student-visible tests
-    + Hidden unit tests
-    + Property-based tests
-    + Reference comparisons against X.jl
-    + Interface/API checks
-    + Documentation/example checks
+## Checks
+
+Automated assessment of student work against the required work is
+included here.
+
+In general such assessment should be
+  + transparent to students (they know what is tested)
+  + pedagogically meaningful
+  + technically implementable 
+  + hard to game
+  + provide feedback about problems
+
+There are two parts of assessment
+
+  1. Specific value tests (as in standard unit testing, though using
+     AnnotatedTests.jl rather than Test for more feedback). Some of
+     these can be student visible, and some hidden. Some of these
+     tests may use tests against the reference function.
+
+  2. Behavioural/property testing of the code, eg testing if a
+     function is recursive, or its API complies with a
+     specification. It is expected that the specified requirements
+     will be visible to students, if not the outcomes of testing of
+     these requirements.
+
+The rubric for the testing IS the skeleton provided to the student.
 
 ## Notes
 
-We are also building a separate package called AnnotatedTests to allow more meaningful feedback from tests, but for the moment restrict testing to the stdlib Test.
+We are also building a separate package called AnnotatedTests to allow
+more meaningful feedback from tests, but for the moment restrict
+testing to the stdlib Test. 
 
 ## Current implementation path
 
@@ -74,9 +96,12 @@ We are also building a separate package called AnnotatedTests to allow more mean
    destination unless `force=true`.
 5. Run tests of Z.jl in isolated Julia processes and return structured results.
 
-Use a TOML file to configure the overall package/example, eg,
+Use an INC file to configure the overall package/example. The configuration
+lives in the INI-style metadata block defined by INCspec and read/written by
+IncCSV.jl, eg,
 
-```
+```text
+---
 [assignment]
 name = "SortingAssignment"
 student_package = "SortingAssignmentStudent"
@@ -93,4 +118,7 @@ default = "student"
 public_tests = true
 hidden_tests = true
 reference_tests = true
+---
+config
+assignment
 ```

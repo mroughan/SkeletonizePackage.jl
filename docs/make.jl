@@ -9,7 +9,13 @@ makedocs(;
         edit_link = nothing,
         repolink = "https://github.com/mroughan/SkeletonPackages.jl",
     ),
-    pages = ["Home" => "index.md"],
+    pages = [
+        "Intro" => "index.md",
+        "Pipeline" => "pipeline.md",
+        "Additional Details" => "details.md",
+        "Requirements" => "requirements.md",
+        "API" => "api.md",
+    ],
     checkdocs = :exports,
     remotes = nothing,
 )

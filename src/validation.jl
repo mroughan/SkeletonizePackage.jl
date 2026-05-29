@@ -1,0 +1,202 @@
+"""
+    ValidationIssue
+
+A validation diagnostic for an annotated teacher package.
+
+`severity` is `:error`, `:warning`, or `:info`. `path` is relative to the
+validated package root when possible, and `line` is `nothing` for package-level
+diagnostics.
+"""
+struct ValidationIssue
+    severity::Symbol
+    path::String
+    line::Union{Nothing, Int}
+    message::String
+    suggestion::String
+end
+
+"""
+    ValidationReport
+
+The result returned by [`validate_teacher_package`](@ref).
+
+Use `isvalid(report)` to check whether the package has blocking errors. Printing
+the report gives a teacher-facing checklist of errors, warnings, and suggestions.
+"""
+struct ValidationReport
+    root::String
+    issues::Vector{ValidationIssue}
+end
+
+Base.isvalid(report::ValidationReport) = !any(issue -> issue.severity == :error, report.issues)
+
+function Base.show(io::IO, issue::ValidationIssue)
+    loc = isempty(issue.path) ? "package" : issue.path
+    if issue.line !== nothing
+        loc *= ":$(issue.line)"
+    end
+    print(io, uppercase(String(issue.severity)), " ", loc, ": ", issue.message)
+    if !isempty(issue.suggestion)
+        print(io, "\n  suggestion: ", issue.suggestion)
+    end
+end
+
+function Base.show(io::IO, report::ValidationReport)
+    counts = Dict(level => count(issue -> issue.severity == level, report.issues) for level in (:error, :warning, :info))
+    print(io, "Validation report for ", report.root, "\n")
+    print(io, counts[:error], " errors, ", counts[:warning], " warnings, ", counts[:info], " notes")
+    if isempty(report.issues)
+        print(io, "\nNo issues found.")
+    else
+        for issue in report.issues
+            print(io, "\n\n")
+            show(io, issue)
+        end
+    end
+end
+
+"""
+    validate_teacher_package(source_path; io=nothing)
+
+Validate an annotated teacher package and return a [`ValidationReport`](@ref).
+
+The validator checks for blocking transformation problems, such as unsupported
+inline annotation forms and unterminated blocks. It also reports teaching-design
+warnings, such as solution blocks without nearby starter blocks, missing public
+tests, missing hidden tests, or starter code with no obvious TODO/error prompt.
+
+Pass `io=stdout` to print a teacher-facing report while returning it.
+"""
+function validate_teacher_package(source_path::AbstractString; io::Union{Nothing, IO}=nothing)
+    root = abspath(source_path)
+    isdir(root) || throw(ArgumentError("source_path is not a directory: $source_path"))
+    issues = ValidationIssue[]
+    _validate_package_shape!(issues, root)
+    annotation_counts = Dict(name => 0 for name in ANNOTATION_OPENERS)
+
+    for (walkroot, dirs, files) in walkdir(root)
+        filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
+        relroot = relpath(walkroot, root)
+        for file in files
+            path = joinpath(walkroot, file)
+            rel = relroot == "." ? file : joinpath(relroot, file)
+            _validate_file!(issues, annotation_counts, root, rel, path)
+        end
+    end
+
+    if annotation_counts["@solution"] == 0
+        _push_issue!(issues, :warning, "", nothing, "no @solution blocks found", "Add @solution blocks around teacher-only implementations.")
+    end
+    if annotation_counts["@starter"] == 0
+        _push_issue!(issues, :warning, "", nothing, "no @starter blocks found", "Give students explicit starter code or placeholders for each exercise.")
+    end
+    if annotation_counts["@student_test"] == 0
+        _push_issue!(issues, :warning, "", nothing, "no @student_test blocks found", "Include visible tests so students can check basic behaviour.")
+    end
+    if annotation_counts["@hidden_test"] == 0
+        _push_issue!(issues, :info, "", nothing, "no @hidden_test blocks found", "Hidden tests are optional, but useful for grading edge cases.")
+    end
+
+    report = ValidationReport(root, issues)
+    if io !== nothing
+        show(io, report)
+        println(io)
+    end
+    return report
+end
+
+function _validate_package_shape!(issues, root)
+    isfile(joinpath(root, "Project.toml")) ||
+        _push_issue!(issues, :error, "Project.toml", nothing, "missing Project.toml", "Create a normal Julia package before generating a student package.")
+    isdir(joinpath(root, "src")) ||
+        _push_issue!(issues, :error, "src", nothing, "missing src directory", "Put the annotated implementation under src/.")
+    isdir(joinpath(root, "test")) ||
+        _push_issue!(issues, :warning, "test", nothing, "missing test directory", "Add tests, including @student_test and optional @hidden_test blocks.")
+end
+
+function _validate_file!(issues, counts, root, rel, path)
+    ext = splitext(path)[2]
+    text = read(path, String)
+    contains_annotation = any(occursin(name, text) for name in ANNOTATION_OPENERS)
+    if contains_annotation && !(ext in TRANSFORMED_EXTENSIONS)
+        _push_issue!(issues, :error, rel, nothing, "annotations appear in a file type that is copied without transformation", "Move annotations into .jl, .md, .toml, or .inc files, or extend the transformer.")
+        return
+    end
+    ext in TRANSFORMED_EXTENSIONS || return
+
+    lines = split(text, '\n'; keepempty=true)
+    solution_lines = Int[]
+    starter_lines = Int[]
+    for (line_number, line) in enumerate(lines)
+        stripped = strip(line)
+        first_token = isempty(stripped) ? "" : first(split(stripped))
+        if first_token in ANNOTATION_OPENERS
+            counts[first_token] += 1
+            if !(stripped in ("$first_token begin",))
+                _push_issue!(issues, :error, rel, line_number, "unsupported annotation syntax: $stripped", "Put annotation openers on their own line, for example `$first_token begin`.")
+            end
+            first_token == "@solution" && push!(solution_lines, line_number)
+            first_token == "@starter" && push!(starter_lines, line_number)
+        elseif startswith(stripped, "@marks")
+            _parse_marks_line(stripped) === nothing &&
+                _push_issue!(issues, :error, rel, line_number, "unsupported @marks syntax: $stripped", "Use `@marks POINTS \"student-facing description\"` inside @student_test or @hidden_test blocks.")
+        elseif startswith(stripped, "@require") || startswith(stripped, "@forbid")
+            _parse_property_line(stripped) === nothing &&
+                _push_issue!(issues, :error, rel, line_number, "unsupported requirement syntax: $stripped", "Use `@require property(...)` or `@forbid property(...)`.")
+        elseif startswith(stripped, "@assignment_requirements")
+            stripped == "@assignment_requirements begin" ||
+                _push_issue!(issues, :error, rel, line_number, "unsupported assignment requirements syntax: $stripped", "Use `@assignment_requirements begin`.")
+        elseif startswith(stripped, "@reference_test")
+            _parse_reference_test_line(stripped) === nothing &&
+                _push_issue!(issues, :error, rel, line_number, "unsupported reference test syntax: $stripped", "Use `@reference_test function_name generator=...`.")
+        elseif any(occursin(name, stripped) for name in ANNOTATION_OPENERS)
+            _push_issue!(issues, :error, rel, line_number, "annotation appears inline or inside a larger expression", "Use a full block with the annotation opener on its own line.")
+        elseif occursin(r"@(hidden|stub|student|teacher|hint|rubric)\b", stripped)
+            _push_issue!(issues, :warning, rel, line_number, "unsupported planned annotation found", "Use the supported annotations: @solution, @starter, @student_test, @hidden_test, and @marks.")
+        end
+    end
+
+    student_text = nothing
+    teacher_text = nothing
+    try
+        student_text = strip_teacher_annotations(text; mode=:student)
+        teacher_text = strip_teacher_annotations(text; mode=:teacher)
+    catch err
+        if err isa ArgumentError
+            _push_issue!(issues, :error, rel, nothing, sprint(showerror, err), "Fix the annotated block structure before generating a student package.")
+        else
+            rethrow()
+        end
+    end
+
+    if ext == ".jl" && student_text !== nothing && teacher_text !== nothing
+        _validate_julia_syntax!(issues, rel, text, "teacher source")
+        _validate_julia_syntax!(issues, rel, student_text, "student output")
+        _validate_julia_syntax!(issues, rel, teacher_text, "teacher output")
+    end
+
+    for line in solution_lines
+        if !any(abs(line - starter) <= 8 for starter in starter_lines)
+            _push_issue!(issues, :warning, rel, line, "@solution has no nearby @starter block", "Pair each teacher solution with a student-facing starter block where practical.")
+        end
+    end
+
+    for line in starter_lines
+        block, _ = _collect_block(lines, line)
+        starter_text = join(block, "\n")
+        if !occursin(r"TODO|FIXME|error\(|throw\(|missing"i, starter_text)
+            _push_issue!(issues, :info, rel, line, "@starter block has no obvious student prompt or failing placeholder", "Consider adding a TODO, `error(\"TODO\")`, or clear partial implementation.")
+        end
+    end
+end
+
+function _validate_julia_syntax!(issues, rel, text, label)
+    parsed = Meta.parse("begin\n$text\nend"; raise=false)
+    if parsed isa Expr && parsed.head == :error
+        _push_issue!(issues, :error, rel, nothing, "$label does not parse as Julia code", "Check that annotation removal leaves complete expressions and balanced blocks.")
+    end
+end
+
+function _push_issue!(issues, severity, path, line, message, suggestion)
+    push!(issues, ValidationIssue(severity, String(path), line, String(message), String(suggestion)))
+end

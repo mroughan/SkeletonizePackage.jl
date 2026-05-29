@@ -1,6 +1,14 @@
 # SkeletonPackages.jl
 
-`SkeletonPackages.jl` generates student starter packages from annotated teacher solution packages.
+`SkeletonPackages.jl` generates student starter packages from annotated teacher
+solution packages. A teacher writes a normal Julia package, marks solution-only
+and student-facing regions, and then generates a package that students can
+complete and submit.
+
+The package is intentionally conservative: it uses a small annotation language,
+keeps generated packages as ordinary Julia packages, and validates teacher
+packages before generation so syntax and teaching-design problems are caught
+early.
 
 ## Quick Start
 
@@ -26,111 +34,74 @@ generate_student_package("examples/SortingAssignment", "SortingAssignmentStudent
 ```
 
 Student packages keep `@starter` and `@student_test` bodies. Teacher packages
-keep `@solution`, `@student_test`, and `@hidden_test` bodies.
+keep `@solution`, `@student_test`, and `@hidden_test` bodies. Generated student
+packages also include `STUDENT_INSTRUCTIONS.md`, a generic guide for students
+who are new to Julia package workflows.
 
-If the destination exists, pass `force=true`.
+## Example 1 - Very Thin Example
 
-Generated student packages also include `STUDENT_INSTRUCTIONS.md`, which explains
-the package layout, `julia --project=.`, `Pkg.instantiate()`, and `Pkg.test()` for
-students who are new to Julia package workflows.
-
-## Validation
-
-Run validation before handing an assignment to students:
+`examples/ThinAssignment` shows the smallest useful pattern: one exported
+function, one teacher solution, one starter placeholder, one public test, and
+one hidden test. Tests can also carry `@marks` lines that become the generated
+student `RUBRIC.md`.
 
 ```julia
-report = validate_teacher_package("examples/SortingAssignment"; io=stdout)
-isvalid(report)
+function double_it(x)
+    @solution begin
+        return 2x
+    end
+    @starter begin
+        error("TODO: implement double_it")
+    end
+end
 ```
 
-Validation errors block generation when `validate=true`. Warnings and notes are
-teacher-facing design feedback, for example missing public tests, hidden tests,
-or starter blocks that do not look like student prompts. Julia files are also
-parsed before and after transformation so broken generated source is caught
-early.
+This is a good starting point when introducing the annotation model without
+configuration or richer testing concerns.
 
-## Configuration
+## Example 2 - Public and Hidden Tests
 
-Assignment generation can be configured with `SkeletonPackages.toml`:
+`examples/SortingAssignment` demonstrates the common assignment pattern:
+students receive a starter implementation and public tests, while hidden tests
+remain in the teacher package for grading.
 
-```toml
+```julia
+@student_test begin
+    @marks 1 "sorts a simple two-element vector"
+    @test mysort([2, 1]) == [1, 2]
+end
+
+@hidden_test begin
+    @marks 1 "handles empty vectors"
+    @test mysort(Int[]) == Int[]
+end
+```
+
+## Example 3 - Configuration Options
+
+`examples/ConfiguredAssignment` includes a `SkeletonPackages.inc` file. The
+configuration lives in the INC metadata block, using the INI-style metadata
+syntax defined by INCspec and read/written by IncCSV.jl.
+
+```text
+---
 [assignment]
-source_path = "examples/SortingAssignment"
-student_path = "SortingAssignmentStudent"
+source_path = "."
+student_path = "../ConfiguredAssignmentStudent"
 mode = "student"
 force = false
 validate = true
 instructions_path = "student_notes.md"
+---
+config
+assignment
 ```
 
-Then run:
+Generate from the config file with:
 
 ```julia
-generate_student_package("SkeletonPackages.toml")
+generate_student_package("examples/ConfiguredAssignment/SkeletonPackages.inc")
 ```
 
-`instructions_path` is optional. When present, the referenced Markdown file is
-included in the generated `STUDENT_INSTRUCTIONS.md` after the generic Julia
-package guide. The path is resolved relative to the config file. Annotation
-blocks in the Markdown file are transformed in student mode.
-
-You may also place the same setting under `[student]`:
-
-```toml
-[student]
-instructions_path = "student_notes.md"
-```
-
-## Templates
-
-Create a small teacher-package template with:
-
-```julia
-create_assignment("MyAssignment")
-```
-
-## Annotation Contract
-
-The current transformer is line-oriented. Put each annotation opener on its own
-line:
-
-```julia
-@solution begin
-    # teacher-only code
-end
-```
-
-Inline annotations are not supported yet.
-
-Supported annotations are `@solution`, `@starter`, `@student_test`, and
-`@hidden_test`.
-
-## Command Line
-
-The package exposes a small CLI-style entry point:
-
-```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentStudent --force
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- init MyAssignment
-```
-
-## API Reference
-
-```@docs
-@solution
-@starter
-@student_test
-@hidden_test
-AssignmentConfig
-GradeResult
-ValidationIssue
-ValidationReport
-create_assignment
-generate_student_package
-grade_submission
-main
-read_assignment_config
-strip_teacher_annotations
-validate_teacher_package
-```
+`instructions_path` points to exercise-specific Markdown that is transformed in
+student mode before being appended to `STUDENT_INSTRUCTIONS.md`.
