@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "b5ed1ed9407d9f66f2cf42a4c632229d741cce45"
+project_hash = "82a0ad068b927a33aa13e1eb0186ba0fcc371c86"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -348,8 +348,8 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
 
 [[deps.SkeletonPackages]]
-deps = ["IncCSV", "TOML"]
-path = "/home/matt/Dropbox/src/Julia/Teaching_Packages/SkeletonPackages.jl"
+deps = ["IncCSV", "Serialization", "TOML"]
+path = "/home/matt/Dropbox/src/Julia/Teaching_Packages/SkeletonPackages.jl/docs/.."
 uuid = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
 version = "0.1.0"
 

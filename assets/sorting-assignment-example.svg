@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="920" height="520" viewBox="0 0 920 520" role="img" aria-labelledby="title desc">
   <title id="title">SortingAssignment annotation example</title>
-  <desc id="desc">A detailed example showing how a teacher mysort implementation and annotated tests become a student starter package with public tests while hidden tests remain teacher-only.</desc>
+  <desc id="desc">A detailed example showing how a teacher mysort implementation and annotated tests become a student skeleton package with public tests while hidden tests remain teacher-only.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f4858"/>
@@ -22,10 +22,10 @@
     <rect x="298" y="468" width="324" height="30" rx="6" fill="#f3edff" stroke="#8357c5" stroke-width="1.5"/>
   </g>
   <text x="211" y="85" text-anchor="middle" class="label">Teacher example package</text>
-  <text x="709" y="85" text-anchor="middle" class="label">Generated student package</text>
-  <text x="460" y="154" text-anchor="middle" class="small">generate_student_package(...)</text>
+  <text x="709" y="85" text-anchor="middle" class="label">Generated skeleton package</text>
+  <text x="460" y="154" text-anchor="middle" class="small">generate_skeleton_package(...)</text>
   <path d="M 398 180 H 522" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <text x="460" y="491" text-anchor="middle" class="small">Hidden tests are kept outside the student package for grading.</text>
+  <text x="460" y="491" text-anchor="middle" class="small">Hidden tests are kept outside the skeleton package for grading.</text>
 
   <g>
     <rect x="62" y="108" width="298" height="126" rx="6" fill="#eef4ff"/>
@@ -51,7 +51,7 @@
     <text x="576" y="160" class="code">function mysort(xs)</text>
     <text x="594" y="184" class="code">error("TODO: implement mysort")</text>
     <text x="576" y="208" class="code">end</text>
-    <text x="576" y="226" class="small">starter body replaces teacher solution</text>
+    <text x="576" y="226" class="small">starter body replaces reference solution</text>
   </g>
   <g>
     <rect x="560" y="246" width="298" height="162" rx="6" fill="#fff8ec"/>

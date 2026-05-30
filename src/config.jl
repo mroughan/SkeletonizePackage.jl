@@ -5,17 +5,31 @@ Configuration for transforming a teacher reference package into a student
 skeleton package.
 
 Use [`read_assignment_config`](@ref) or pass a `SkeletonPackages.inc` file to
-[`generate_student_package`](@ref) to construct this from INC metadata.
+[`generate_skeleton_package`](@ref) to construct this from INC metadata.
 `instructions_path` is optional and points to Markdown that should be appended
-to the generated student instructions.
+to the generated student instructions. `ai_policy` controls the generated
+`AGENTS.md` file and must be one of `:forbidden`, `:recorded`, or `:allowed`.
+
+# Example
+
+```julia
+julia> config = AssignmentConfig("Reference", "Skeleton", :student, true, true, nothing, :recorded);
+
+julia> config.reference_path
+"Reference"
+
+julia> config.skeleton_path
+"Skeleton"
+```
 """
 struct AssignmentConfig
-    source_path::String
-    student_path::String
+    reference_path::String
+    skeleton_path::String
     mode::Symbol
     force::Bool
     validate::Bool
     instructions_path::Union{Nothing, String}
+    ai_policy::Symbol
 end
 
 """
@@ -34,28 +48,63 @@ mode = "student"
 force = false
 validate = true
 instructions_path = "student_notes.md"
+ai_policy = "recorded"
 ---
 config
 assignment
 ```
 
 `instructions_path` may also be placed under `[student]`.
+
+# Example
+
+Given a `SkeletonPackages.inc` file with:
+
+```text
+---
+[assignment]
+reference_path = "."
+skeleton_path = "../MyAssignmentSkeleton"
+mode = "student"
+force = true
+validate = true
+ai_policy = "forbidden"
+---
+config
+assignment
+```
+
+reading it produces an `AssignmentConfig`:
+
+```julia
+julia> config = read_assignment_config("SkeletonPackages.inc");
+
+julia> basename(config.reference_path)
+"MyAssignment"
+
+julia> basename(config.skeleton_path)
+"MyAssignmentSkeleton"
+
+julia> config.force
+true
+```
 """
 function read_assignment_config(path::AbstractString="SkeletonPackages.inc")
     data = metadata(readinc(path))
     assignment = _metadata_section(data, "assignment")
     student_section = _metadata_section(data, "student")
     base = dirname(abspath(path))
-    source = get(assignment, "reference_path", get(assignment, "source_path", get(assignment, "source", "")))
-    student = get(assignment, "skeleton_path", get(assignment, "student_path", get(assignment, "student_package", "")))
-    isempty(source) && throw(ArgumentError("missing [assignment] reference_path in $path"))
-    isempty(student) && throw(ArgumentError("missing [assignment] skeleton_path in $path"))
+    reference = get(assignment, "reference_path", "")
+    skeleton = get(assignment, "skeleton_path", "")
+    isempty(reference) && throw(ArgumentError("missing [assignment] reference_path in $path"))
+    isempty(skeleton) && throw(ArgumentError("missing [assignment] skeleton_path in $path"))
     mode = Symbol(String(get(assignment, "mode", "student")))
     force = _metadata_bool(get(assignment, "force", "false"), "assignment.force")
     validate = _metadata_bool(get(assignment, "validate", "true"), "assignment.validate")
     instructions = get(assignment, "instructions_path", get(student_section, "instructions_path", nothing))
     instructions_path = instructions === nothing ? nothing : _config_path(base, String(instructions))
-    return AssignmentConfig(_config_path(base, String(source)), _config_path(base, String(student)), mode, force, validate, instructions_path)
+    ai_policy = _metadata_ai_policy(get(assignment, "ai_policy", get(student_section, "ai_policy", "recorded")))
+    return AssignmentConfig(_config_path(base, String(reference)), _config_path(base, String(skeleton)), mode, force, validate, instructions_path, ai_policy)
 end
 
 function _metadata_section(data::AbstractDict, name::AbstractString)
@@ -71,6 +120,14 @@ function _metadata_bool(value, name::AbstractString)
     normalized in ("true", "yes", "1") && return true
     normalized in ("false", "no", "0") && return false
     throw(ArgumentError("$name must be true or false"))
+end
+
+function _metadata_ai_policy(value)
+    value isa Symbol && value in (:forbidden, :recorded, :allowed) && return value
+    value isa AbstractString || throw(ArgumentError("ai_policy must be forbidden, recorded, or allowed"))
+    policy = Symbol(lowercase(strip(value)))
+    policy in (:forbidden, :recorded, :allowed) || throw(ArgumentError("ai_policy must be forbidden, recorded, or allowed"))
+    return policy
 end
 
 function _config_path(base::AbstractString, path::AbstractString)

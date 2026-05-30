@@ -3,6 +3,17 @@ struct RubricItem
     visibility::Symbol
     points::Int
     description::String
+    zero_marks::Bool
+    spec::Any
+    path::String
+    line::Int
+end
+
+struct ReferenceTestSpec
+    visibility::Symbol
+    function_name::Symbol
+    input_expr::String
+    description::String
     path::String
     line::Int
 end
@@ -24,8 +35,8 @@ function _parse_marks_line(stripped::AbstractString)
     return (points=points, description=parsed)
 end
 
-function _collect_rubric(source_path::AbstractString)
-    root = abspath(source_path)
+function _collect_rubric(reference_path::AbstractString)
+    root = abspath(reference_path)
     items = RubricItem[]
     for (walkroot, dirs, files) in walkdir(root)
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
@@ -44,17 +55,17 @@ function _collect_rubric(source_path::AbstractString)
                     for (offset, line) in enumerate(block)
                         marks = _parse_marks_line(strip(line))
                         if marks !== nothing
-                            push!(items, RubricItem(:marks, visibility, marks.points, marks.description, rel, i + offset))
+                            push!(items, RubricItem(:marks, visibility, marks.points, marks.description, false, nothing, rel, i + offset))
                             continue
                         end
                         property = _parse_property_line(strip(line))
                         if property !== nothing
-                            push!(items, RubricItem(property.kind, visibility, 0, property.description, rel, i + offset))
+                            push!(items, RubricItem(property.kind, visibility, property.points, property.description, property.zero_marks, property.spec, rel, i + offset))
                             continue
                         end
                         reference = _parse_reference_test_line(strip(line))
                         reference === nothing && continue
-                        push!(items, RubricItem(:reference_test, visibility, 0, reference.description, rel, i + offset))
+                        push!(items, RubricItem(:reference_test, visibility, 0, reference.description, false, nothing, rel, i + offset))
                     end
                     i = j + 1
                 else
@@ -66,12 +77,44 @@ function _collect_rubric(source_path::AbstractString)
     return items
 end
 
+function _collect_reference_tests(reference_path::AbstractString)
+    root = abspath(reference_path)
+    specs = ReferenceTestSpec[]
+    for (walkroot, dirs, files) in walkdir(root)
+        filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
+        relroot = relpath(walkroot, root)
+        for file in files
+            any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS) || continue
+            path = joinpath(walkroot, file)
+            rel = relroot == "." ? file : joinpath(relroot, file)
+            lines = split(read(path, String), '\n'; keepempty=true)
+            i = 1
+            while i <= length(lines)
+                stripped = strip(lines[i])
+                if stripped in ("@student_test begin", "@hidden_test begin", "@assignment_requirements begin")
+                    visibility = startswith(stripped, "@hidden_test") ? :hidden : :public
+                    block, j = _collect_block(lines, i)
+                    for (offset, line) in enumerate(block)
+                        reference = _parse_reference_test_line(strip(line))
+                        reference === nothing && continue
+                        push!(specs, ReferenceTestSpec(visibility, reference.function_name, reference.input_expr, reference.description, rel, i + offset))
+                    end
+                    i = j + 1
+                else
+                    i += 1
+                end
+            end
+        end
+    end
+    return specs
+end
+
 function _write_rubric(dst::AbstractString, items::Vector{RubricItem})
     public_marks = [item for item in items if item.kind == :marks && item.visibility == :public]
     hidden_marks = [item for item in items if item.kind == :marks && item.visibility == :hidden]
     public_properties = [item for item in items if item.kind != :marks && item.visibility == :public]
     hidden_properties = [item for item in items if item.kind != :marks && item.visibility == :hidden]
-    total = sum(item.points for item in items if item.kind == :marks)
+    total = sum(item.points for item in items if item.kind in (:marks, :require, :forbid))
     write(joinpath(dst, "RUBRIC.md"), """
 # Rubric
 
@@ -116,8 +159,10 @@ function _rubric_property_section(title::AbstractString, items::Vector{RubricIte
     else
         for item in items
             verb = item.kind == :require ? "Requires" : item.kind == :forbid ? "Forbids" : "Reference test"
+            suffix = item.zero_marks ? " Zero marks if failed." : ""
+            points = item.points > 0 ? " ($(item.points) mark$(item.points == 1 ? "" : "s"))" : ""
             println(io)
-            println(io, "- ", verb, ": ", item.description)
+            println(io, "- ", verb, points, ": ", item.description, suffix)
         end
     end
     return String(take!(io)) |> rstrip
@@ -127,20 +172,55 @@ function _parse_reference_test_line(stripped::AbstractString)
     startswith(stripped, "@reference_test ") || return nothing
     text = strip(stripped[length("@reference_test ")+1:end])
     isempty(text) && return nothing
-    return (description="reference behaviour `$text`",)
+    m = match(r"^([A-Za-z_]\w*)\s+(?:generator|inputs)\s*=\s*(.+)$", text)
+    m === nothing && return nothing
+    function_text = m.captures[1]
+    input_text = m.captures[2]
+    function_text === nothing && return nothing
+    input_text === nothing && return nothing
+    parsed_inputs = Meta.parse(input_text; raise=false)
+    parsed_inputs isa Expr && parsed_inputs.head == :error && return nothing
+    return (
+        function_name=Symbol(function_text),
+        input_expr=strip(input_text),
+        description="reference behaviour `$text`",
+    )
 end
 
 function _parse_property_line(stripped::AbstractString)
-    m = match(r"^@(require|forbid)\s+(.+)$", stripped)
-    m === nothing && return nothing
-    kind_text = m.captures[1]
-    spec_text = m.captures[2]
-    kind_text === nothing && return nothing
-    spec_text === nothing && return nothing
-    parsed = Meta.parse(spec_text; raise=false)
-    parsed isa Expr && parsed.head == :call || return nothing
-    kind = kind_text == "require" ? :require : :forbid
-    return (kind=kind, description=_property_description(kind, parsed))
+    parsed = Meta.parse(stripped; raise=false)
+    parsed isa Expr && parsed.head == :macrocall || return nothing
+    length(parsed.args) >= 3 || return nothing
+    macro_name = parsed.args[1]
+    macro_name in (Symbol("@require"), Symbol("@forbid")) || return nothing
+    spec = parsed.args[3]
+    spec isa Expr && spec.head == :call || return nothing
+    kind = macro_name == Symbol("@require") ? :require : :forbid
+    points = 0
+    zero_marks = false
+    label = nothing
+    for arg in parsed.args[4:end]
+        if arg isa Expr && arg.head == :(=)
+            key = arg.args[1]
+            value = arg.args[2]
+            if key == :marks
+                value isa Integer || return nothing
+                value < 0 && return nothing
+                points = Int(value)
+            elseif key == :zero_marks
+                value isa Bool || return nothing
+                zero_marks = value
+            else
+                return nothing
+            end
+        elseif arg isa String
+            label = arg
+        else
+            return nothing
+        end
+    end
+    description = label === nothing ? _property_description(kind, spec) : string(label, " (", _property_description(kind, spec), ")")
+    return (kind=kind, spec=spec, points=points, zero_marks=zero_marks, description=description)
 end
 
 function _property_description(kind::Symbol, spec::Expr)

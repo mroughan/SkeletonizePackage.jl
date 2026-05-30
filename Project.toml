@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [deps]
 IncCSV = "66f2fdda-89f9-4824-87f0-56b432c695d5"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
@@ -12,6 +13,7 @@ Aqua = "0.8"
 Documenter = "1"
 JET = "0.9, 0.10, 0.11"
 IncCSV = "0.1"
+Serialization = "1"
 TOML = "1"
 Test = "1"
 julia = "1.10"

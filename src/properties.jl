@@ -26,6 +26,10 @@ end
 
 function _source_project(caller::Module)
     root = _source_project_root(caller)
+    return _source_project_from_path(root)
+end
+
+function _source_project_from_path(root::AbstractString)
     module_name = _project_name(root)
     files = Dict{String,String}()
     src = joinpath(root, "src")
@@ -194,10 +198,20 @@ function _kw_int(args, key::Symbol; default::Int)
 end
 
 function _is_exported(project::SourceProject, name::Symbol)
-    for m in eachmatch(r"\bexport\b([\s\S]*?)(?:\n\s*\n|$)", project.text)
-        exports = replace(m.captures[1], "\n" => " ")
-        names = split(exports, ",")
-        any(strip(part) == string(name) for part in names) && return true
+    exports = String[]
+    collecting = false
+    for line in split(project.text, '\n')
+        stripped = strip(line)
+        if startswith(stripped, "export ")
+            push!(exports, stripped[length("export ")+1:end])
+            collecting = endswith(stripped, ",")
+        elseif collecting
+            push!(exports, stripped)
+            collecting = endswith(stripped, ",")
+        end
+    end
+    for part in split(join(exports, " "), ",")
+        strip(part) == string(name) && return true
     end
     return false
 end

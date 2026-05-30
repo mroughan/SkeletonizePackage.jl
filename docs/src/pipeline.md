@@ -1,14 +1,17 @@
 # Pipeline
 
-`SkeletonPackages.jl` is built around a teacher package to student package
-pipeline:
+`SkeletonPackages.jl` is built around a setup to reference to skeleton to
+submission pipeline:
 
 ```text
+0. create_assignment(...)
+  |
+  v
 X.jl  teacher reference package
   |
-  | generate_student_package(...)
+  | generate_skeleton_package(...)
   v
-Y.jl  student starter package
+Y.jl  student skeleton package
   |
   | student completes
   v
@@ -19,6 +22,39 @@ Z.jl  student submission package
 feedback/report
 ```
 
+## Worked Pipeline
+
+The checked-in examples can be used to exercise the whole flow. Teachers can
+begin from a scaffolded reference package:
+
+```bash
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- init MyAssignment --ai-policy recorded
+```
+
+Then generate a student skeleton and grade a submitted package:
+
+```bash
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
+```
+
+The generated skeleton is the package distributed to students:
+
+```text
+SortingAssignmentSkeleton/
+  Project.toml
+  STUDENT_INSTRUCTIONS.md
+  AGENTS.md
+  RUBRIC.md
+  src/
+  test/
+```
+
+The student's submitted package is graded against the original reference
+package. The grading command writes two different outputs: a Markdown feedback
+report for the student, and a CSV row for the teacher's marks table.
+
 ## Configuration
 
 Assignment generation can be configured with `SkeletonPackages.inc`:
@@ -26,12 +62,13 @@ Assignment generation can be configured with `SkeletonPackages.inc`:
 ```text
 ---
 [assignment]
-source_path = "examples/SortingAssignment"
-student_path = "SortingAssignmentStudent"
+reference_path = "examples/SortingAssignment"
+skeleton_path = "SortingAssignmentStudent"
 mode = "student"
 force = false
 validate = true
 instructions_path = "student_notes.md"
+ai_policy = "recorded"
 ---
 config
 assignment
@@ -40,12 +77,19 @@ assignment
 Then run:
 
 ```julia
-generate_student_package("SkeletonPackages.inc")
+generate_skeleton_package("SkeletonPackages.inc")
 ```
 
-`source_path`, `student_path`, `mode`, `force`, and `validate` belong under
-`[assignment]`. `instructions_path` is optional and may also be placed under
-`[student]`. Relative paths are resolved from the config file's directory.
+`reference_path`, `skeleton_path`, `mode`, `force`, `validate`, and `ai_policy`
+belong under `[assignment]`. `instructions_path` and `ai_policy` may also be
+placed under `[student]`. Relative paths are resolved from the config file's
+directory.
+
+`ai_policy` controls the generated `AGENTS.md` file:
+
+- `forbidden`: AI agents are strictly forbidden for the assignment.
+- `recorded`: AI use is allowed only when actions are recorded for audit.
+- `allowed`: AI use is allowed, subject to the teacher's normal rules.
 
 ## Annotation
 
@@ -69,7 +113,7 @@ Annotation openers must appear on their own line:
 end
 ```
 
-Inline forms are reported by `validate_teacher_package` and are not
+Inline forms are reported by `validate_reference_package` and are not
 transformed.
 
 Rubric metadata can be placed inside public or hidden test blocks:
@@ -81,13 +125,13 @@ Rubric metadata can be placed inside public or hidden test blocks:
 end
 ```
 
-The generated student package includes `RUBRIC.md`. Hidden test code remains
+The generated skeleton package includes `RUBRIC.md`. Hidden test code remains
 private, but the `@marks` description tells students what behaviour will be
 graded.
 
 ## Skeleton Generation
 
-`generate_student_package` copies a Julia package, transforms `.jl`, `.md`,
+`generate_skeleton_package` copies a Julia package, transforms `.jl`, `.md`,
 `.toml`, and `.inc` files, and skips teacher-only directories such as `.git`,
 `build`, and `solutions`.
 
@@ -98,12 +142,19 @@ keeps `@starter` and `@student_test` bodies. For `mode = :teacher`, it keeps
 
 If the destination exists, pass `force=true`.
 
+Generation also writes:
+
+- `STUDENT_INSTRUCTIONS.md`, with generic package workflow guidance plus any
+  configured exercise notes.
+- `RUBRIC.md`, generated from `@marks`, `@require`, and `@forbid`.
+- `AGENTS.md`, generated from `ai_policy` with explicit AI-use instructions.
+
 ## Checking Student Work
 
-Run validation before handing an assignment to students:
+Run validation before handing a skeleton to students:
 
 ```julia
-report = validate_teacher_package("examples/SortingAssignment"; io=stdout)
+report = validate_reference_package("examples/SortingAssignment"; io=stdout)
 isvalid(report)
 ```
 
@@ -111,5 +162,25 @@ Validation errors block generation when `validate=true`. Warnings and notes are
 teacher-facing design feedback, for example missing public tests, hidden tests,
 or starter blocks that do not look like student prompts.
 
-`grade_submission` runs a student package's tests in an isolated Julia process
-and returns a `GradeResult`.
+`grade_submission` runs a submission package's tests in an isolated Julia
+process and returns a `GradeResult`. The result contains `student_report` for
+student feedback, plus `csv_header` and `csv_row` for a marks table with one row
+per student.
+
+```julia
+result = grade_submission(
+    "examples/SortingAssignment",
+    "SortingAssignmentSubmission";
+    student_id="s123",
+    report_path="s123-feedback.md",
+    csv_path="marks.csv",
+)
+
+result.student_report
+result.csv_row
+```
+
+The first-pass grading harness summarizes marks by rubric visibility, such as
+`public` and `hidden`, and totals them at the end of the CSV row. Per-criterion
+marks are currently inferred from the overall submission test result; future
+hidden and reference-test execution can refine those outcomes.

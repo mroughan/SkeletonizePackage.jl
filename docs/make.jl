@@ -20,6 +20,7 @@ makedocs(;
     ),
     pages = [
         "Intro" => "index.md",
+        "Features" => "features.md",
         "Pipeline" => "pipeline.md",
         "Additional Details" => "details.md",
         "Requirements" => "requirements.md",

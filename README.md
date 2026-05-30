@@ -7,34 +7,66 @@
 [![Julia](https://img.shields.io/badge/julia-1.10%2B-blue.svg)](https://julialang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-`SkeletonPackages.jl` is a teaching-oriented metapackage for generating student
-starter packages from teacher solution packages.
+`SkeletonPackages.jl` is a teaching-oriented metapackage for transforming a
+teacher reference package into a student skeleton package. Students complete the
+skeleton to create their submission package.
+
+## Features
+
+- Step 0 teacher scaffolding with `create_assignment(...)` or the `init` CLI
+  command.
+- Reference-to-skeleton transformation using `@solution`, `@starter`,
+  `@student_test`, and `@hidden_test`.
+- Generated `STUDENT_INSTRUCTIONS.md`, `RUBRIC.md`, and configurable
+  `AGENTS.md` AI-use policy files.
+- Rubric marks, required/forbidden code properties, and whole-assignment
+  zeroing gates with `zero_marks=true`.
+- Hidden reference-oracle tests that compare submissions with the teacher
+  implementation.
+- Student feedback reports and CSV mark rows for class-scale grading.
 
 ## Quick start
 
-From Julia, generate a student package from the included example:
+From Julia, start by creating a teacher reference package template, then run the
+pipeline on the included reference example:
 
 ```julia
 using SkeletonPackages
 
-generate_student_package("examples/SortingAssignment", "SortingAssignmentStudent")
+create_assignment("MyAssignment"; ai_policy=:recorded)
+
+reference = "examples/SortingAssignment"
+skeleton = "SortingAssignmentSkeleton"
+submission = "SortingAssignmentSubmission"
+
+validate_reference_package(reference; io=stdout)
+generate_skeleton_package(reference, skeleton; force=true)
+grade_submission(
+    reference,
+    submission;
+    student_id="s123",
+    report_path="s123-feedback.md",
+    csv_path="marks.csv",
+)
 ```
 
-The generated package keeps starter implementations and public tests, while
+The generated skeleton keeps starter implementations and public tests, while
 removing solution blocks and hidden tests. It also adds
 `STUDENT_INSTRUCTIONS.md`, a generic guide for students who are new to Julia
-packages, local environments, dependency installation, and running tests.
+packages, local environments, dependency installation, and running tests. It
+also writes `AGENTS.md`, which records the teacher's AI-use policy for the
+assignment.
 
-If the destination already exists, pass `force=true`:
+If the skeleton destination already exists, pass `force=true`:
 
 ```julia
-generate_student_package("examples/SortingAssignment", "SortingAssignmentStudent"; force=true)
+generate_skeleton_package("examples/SortingAssignment", "SortingAssignmentSkeleton"; force=true)
 ```
 
-You can also validate the teacher package before generating:
+You can also validate the reference package before generating:
 
 ```julia
-report = validate_teacher_package("examples/SortingAssignment"; io=stdout)
+report = validate_reference_package("examples/SortingAssignment"; io=stdout)
 isvalid(report)
 ```
 
@@ -42,15 +74,16 @@ Or use the small command-line entry point:
 
 ```bash
 julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentStudent
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
 ```
 
 ![SkeletonPackages.jl workflow pipeline](assets/workflow-pipeline.svg)
 
-At generation time, `SkeletonPackages.jl` keeps student-facing scaffolding and
-removes teacher-only material:
+At generation time, `SkeletonPackages.jl` keeps student-facing scaffolding in
+the skeleton and removes teacher-only reference material:
 
-![Annotation transformation from teacher package to student package](assets/annotation-transform.svg)
+![Annotation transformation from reference package to skeleton package](assets/annotation-transform.svg)
 
 ## Teacher annotations
 
@@ -73,7 +106,7 @@ Supported annotation openers must appear on their own line:
 end
 ```
 
-Inline annotation forms are reported by `validate_teacher_package` and are not
+Inline annotation forms are reported by `validate_reference_package` and are not
 transformed.
 
 Visible and hidden tests can be marked similarly:
@@ -90,7 +123,7 @@ end
 end
 ```
 
-`@marks` is rubric metadata. It is a runtime no-op, but generated student
+`@marks` is rubric metadata. It is a runtime no-op, but generated skeleton
 packages include a `RUBRIC.md` file summarizing public and hidden grading
 criteria without revealing hidden test code.
 
@@ -99,47 +132,78 @@ Broader code requirements can be grouped similarly:
 ```julia
 @assignment_requirements begin
     @require exported(mysort)
-    @require docstring(mysort)
-    @forbid imports(DataFrames)
+    @require docstring(mysort) marks=1 "documents mysort"
+    @forbid imports(DataFrames) zero_marks=true "does not use a shortcut package"
     @reference_test mysort generator=1:10
 end
 ```
+
+`marks=N` assigns marks to a required or forbidden property. `zero_marks=true` makes
+the property a whole-assignment gate: if it fails during grading, the student
+gets zero for the assignment.
+
+Reference tests can compare a submission against the teacher implementation
+during grading:
+
+```julia
+@hidden_test begin
+    @marks 3 "matches the reference implementation on generated inputs"
+    @reference_test clamp01 generator=[-2, -0.5, 0, 0.25, 1, 2]
+end
+```
+
+See `examples/ReferenceOracleAssignment` for a complete package using this
+pattern.
 
 The included `SortingAssignment` example shows how the same annotations affect
 both source code and tests:
 
 ![SortingAssignment annotation example](assets/sorting-assignment-example.svg)
 
-Then generate the student version:
+Then generate the skeleton version:
 
 ```julia
 using SkeletonPackages
 
-generate_student_package("SortingAssignment", "SortingAssignmentStudent")
+generate_skeleton_package("SortingAssignment", "SortingAssignmentSkeleton"; force=true)
+```
+
+After students submit completed packages, grade each submission against the same
+reference package:
+
+```julia
+grade_submission(
+    "SortingAssignment",
+    "SortingAssignmentSubmission";
+    student_id="s123",
+    report_path="s123-feedback.md",
+    csv_path="marks.csv",
+)
 ```
 
 ## Examples
 
-See `examples/SortingAssignment` for a minimal annotated teacher package. It
+See `examples/SortingAssignment` for a minimal annotated reference package. It
 contains:
 
-- `@solution` code that runs in the teacher package.
-- `@starter` code that appears in the generated student package.
+- `@solution` code that runs in the reference package.
+- `@starter` code that appears in the generated skeleton package.
 - `@student_test` tests that students can see.
 - `@hidden_test` tests that teachers can keep for grading.
 - `@marks` metadata that appears in the generated `RUBRIC.md`.
 
-To create a new starter teacher package:
+To create a new reference package template as step 0 of the pipeline:
 
 ```julia
-create_assignment("MyAssignment")
+create_assignment("MyAssignment"; ai_policy=:recorded)
 ```
 
-This writes a small package template and a `SkeletonPackages.inc` config file.
-The config can be used directly:
+This writes a small package template, `README.md`, `student_notes.md`, public
+and hidden tests, rubric/property/reference-test examples, and a
+`SkeletonPackages.inc` config file. The config can be used directly:
 
 ```julia
-generate_student_package("MyAssignment/SkeletonPackages.inc")
+generate_skeleton_package("MyAssignment/SkeletonPackages.inc")
 ```
 
 The config can also include exercise-specific student instructions:
@@ -147,9 +211,10 @@ The config can also include exercise-specific student instructions:
 ```text
 ---
 [assignment]
-source_path = "."
-student_path = "../MyAssignmentStudent"
+reference_path = "."
+skeleton_path = "../MyAssignmentStudent"
 instructions_path = "student_notes.md"
+ai_policy = "recorded"
 ---
 config
 assignment
@@ -160,9 +225,33 @@ When `instructions_path` is set, that Markdown file is appended to the generated
 Annotation blocks in the Markdown file are transformed in student mode, so
 `@starter` content is kept and `@solution` content is removed.
 
+`ai_policy` controls the generated `AGENTS.md` file. It can be:
+
+- `forbidden`: AI agents and AI coding assistants are strictly forbidden.
+- `recorded`: AI use is permitted only when actions, prompts, outputs, and file
+  changes are recorded for audit.
+- `allowed`: AI use is allowed, while students remain responsible for
+  correctness and academic-integrity requirements.
+
+## Grading outputs
+
+`grade_submission(reference_path, submission_path)` grades a student submission
+against the reference package rubric. The returned `GradeResult` includes:
+
+- `student_report`: Markdown feedback for the student, including test output and
+  marks summarized against the rubric.
+- `csv_header` and `csv_row`: a one-row marks summary suitable for concatenating
+  into a larger CSV file with one row per student.
+
+The CLI can write both outputs:
+
+```bash
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade ReferencePackage SubmissionPackage --student-id s123 --report s123-feedback.md --csv marks.csv
+```
+
 ## Current status
 
-This is still an early package, but it now validates teacher packages before
+This is still an early package, but it now validates reference packages before
 generation and reports both blocking transformation errors and teaching-design
 warnings. Validation also checks that Julia source parses before and after
 annotation removal. The transformer remains conservative: annotation macros must

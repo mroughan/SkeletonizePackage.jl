@@ -15,10 +15,12 @@ and uses semantic versioning once releases begin.
   packages.
 - Assignment requirement macros: `@assignment_requirements`, `@require`,
   `@forbid`, and `@reference_test`.
+- Executable reference tests during grading, comparing submission outputs with
+  the teacher reference implementation in isolated Julia processes.
 - Source and project property checks for common grading constraints, including
   exported names, method arity, docstrings, imports, calls, recursion, loops,
   comments, lines of code, and nested-loop depth.
-- Student package generation from annotated teacher packages.
+- Skeleton package generation from annotated teacher reference packages.
 - Teacher package validation with blocking errors and teaching-design warnings.
 - A small command-line entry point for validation and generation.
 - INC/INI assignment configuration through `SkeletonPackages.inc`, using the
@@ -29,6 +31,8 @@ and uses semantic versioning once releases begin.
   requirement macros, and public API.
 - Example assignments under `examples/`, including checked-in packages used by
   CI tests.
+- `examples/ReferenceOracleAssignment`, demonstrating hidden reference-oracle
+  tests with `@reference_test`.
 - CI coverage for Julia 1.10 and Julia 1.12, with JET analysis enabled on Julia
   1.12 or later.
 - SVG documentation assets illustrating the package pipeline, annotation

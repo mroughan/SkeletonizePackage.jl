@@ -5,9 +5,9 @@ using SkeletonPackages
 @assignment_requirements begin
     @require exported(mysort)
     @require exists(mysort)
-    @require signature(mysort, 1)
-    @require docstring(mysort)
-    @forbid imports(DataFrames)
+    @require signature(mysort, 1) marks=1 "keeps the required one-argument interface"
+    @require docstring(mysort) marks=1 "documents the public function"
+    @forbid imports(DataFrames) zero_marks=true "does not use a package that solves sorting"
     @require nested_loop_depth(max=1)
 end
 

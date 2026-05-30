@@ -11,10 +11,10 @@ The validation step checks annotated files before and after transformation so
 broken generated Julia source is caught early. It also reports teaching-design
 warnings, such as a solution block without nearby starter code.
 
-The broader grading philosophy is behavioural rather than textual: student
-submissions should be checked using public tests, hidden tests, reference
+The broader grading philosophy is behavioural rather than textual: submission
+packages should be checked using public tests, hidden tests, reference
 comparisons, interface checks, and documentation examples, not by comparing
-their source code directly with the teacher solution.
+their source code directly with the reference solution.
 
 ## Command Line
 
@@ -22,9 +22,10 @@ The package exposes a small CLI-style entry point:
 
 ```bash
 julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentStudent --force
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentStudent --force --ai-policy recorded
 julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate --config examples/ConfiguredAssignment/SkeletonPackages.inc --force
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- init MyAssignment
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade examples/SortingAssignment StudentSubmission --report feedback.md --csv marks.csv
+julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- init MyAssignment --ai-policy recorded
 ```
 
 ## Annotation Contract
@@ -54,6 +55,11 @@ uses `IncCSV.jl` to read and write these files.
 
 Metadata values are strings or integers. Boolean settings such as `force` and
 `validate` may be written as `true`/`false`, `yes`/`no`, or `1`/`0`.
+
+The `ai_policy` setting may be `forbidden`, `recorded`, or `allowed`. It
+controls the generated `AGENTS.md` file in the student skeleton. This file is
+not a technical security mechanism; it is an explicit instruction and audit
+record that makes the teacher's AI-use rule unambiguous.
 
 ## Rubric Generation
 

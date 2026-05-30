@@ -1,11 +1,20 @@
 """
     ValidationIssue
 
-A validation diagnostic for an annotated teacher package.
+A validation diagnostic for an annotated teacher reference package.
 
 `severity` is `:error`, `:warning`, or `:info`. `path` is relative to the
 validated package root when possible, and `line` is `nothing` for package-level
 diagnostics.
+
+# Example
+
+```julia
+julia> issue = ValidationIssue(:warning, "test/runtests.jl", 3, "no @student_test blocks found", "Add visible tests.");
+
+julia> sprint(show, issue)
+"WARNING test/runtests.jl:3: no @student_test blocks found\\n  suggestion: Add visible tests."
+```
 """
 struct ValidationIssue
     severity::Symbol
@@ -18,10 +27,22 @@ end
 """
     ValidationReport
 
-The result returned by [`validate_teacher_package`](@ref).
+The result returned by [`validate_reference_package`](@ref).
 
 Use `isvalid(report)` to check whether the package has blocking errors. Printing
 the report gives a teacher-facing checklist of errors, warnings, and suggestions.
+
+# Example
+
+```julia
+julia> report = ValidationReport("Reference", ValidationIssue[]);
+
+julia> isvalid(report)
+true
+
+julia> sprint(show, report)
+"Validation report for Reference\\n0 errors, 0 warnings, 0 notes\\nNo issues found."
+```
 """
 struct ValidationReport
     root::String
@@ -56,9 +77,9 @@ function Base.show(io::IO, report::ValidationReport)
 end
 
 """
-    validate_teacher_package(source_path; io=nothing)
+    validate_reference_package(reference_path; io=nothing)
 
-Validate an annotated teacher package and return a [`ValidationReport`](@ref).
+Validate an annotated teacher reference package and return a [`ValidationReport`](@ref).
 
 The validator checks for blocking transformation problems, such as unsupported
 inline annotation forms and unterminated blocks. It also reports teaching-design
@@ -66,10 +87,30 @@ warnings, such as solution blocks without nearby starter blocks, missing public
 tests, missing hidden tests, or starter code with no obvious TODO/error prompt.
 
 Pass `io=stdout` to print a teacher-facing report while returning it.
+
+# Example
+
+```julia
+julia> report = validate_reference_package("examples/SortingAssignment");
+
+julia> isvalid(report)
+true
+
+julia> startswith(sprint(show, report), "Validation report")
+true
+```
+
+With `io=stdout`, a report is printed as well as returned:
+
+```text
+Validation report for /path/to/examples/SortingAssignment
+0 errors, 0 warnings, 0 notes
+No issues found.
+```
 """
-function validate_teacher_package(source_path::AbstractString; io::Union{Nothing, IO}=nothing)
-    root = abspath(source_path)
-    isdir(root) || throw(ArgumentError("source_path is not a directory: $source_path"))
+function validate_reference_package(reference_path::AbstractString; io::Union{Nothing, IO}=nothing)
+    root = abspath(reference_path)
+    isdir(root) || throw(ArgumentError("reference_path is not a directory: $reference_path"))
     issues = ValidationIssue[]
     _validate_package_shape!(issues, root)
     annotation_counts = Dict(name => 0 for name in ANNOTATION_OPENERS)
@@ -107,7 +148,7 @@ end
 
 function _validate_package_shape!(issues, root)
     isfile(joinpath(root, "Project.toml")) ||
-        _push_issue!(issues, :error, "Project.toml", nothing, "missing Project.toml", "Create a normal Julia package before generating a student package.")
+        _push_issue!(issues, :error, "Project.toml", nothing, "missing Project.toml", "Create a normal Julia package before generating a skeleton package.")
     isdir(joinpath(root, "src")) ||
         _push_issue!(issues, :error, "src", nothing, "missing src directory", "Put the annotated implementation under src/.")
     isdir(joinpath(root, "test")) ||
@@ -142,7 +183,7 @@ function _validate_file!(issues, counts, root, rel, path)
                 _push_issue!(issues, :error, rel, line_number, "unsupported @marks syntax: $stripped", "Use `@marks POINTS \"student-facing description\"` inside @student_test or @hidden_test blocks.")
         elseif startswith(stripped, "@require") || startswith(stripped, "@forbid")
             _parse_property_line(stripped) === nothing &&
-                _push_issue!(issues, :error, rel, line_number, "unsupported requirement syntax: $stripped", "Use `@require property(...)` or `@forbid property(...)`.")
+                _push_issue!(issues, :error, rel, line_number, "unsupported requirement syntax: $stripped", "Use `@require property(...)`, optionally followed by `marks=N`, `zero_marks=true`, and a description string.")
         elseif startswith(stripped, "@assignment_requirements")
             stripped == "@assignment_requirements begin" ||
                 _push_issue!(issues, :error, rel, line_number, "unsupported assignment requirements syntax: $stripped", "Use `@assignment_requirements begin`.")
@@ -159,11 +200,11 @@ function _validate_file!(issues, counts, root, rel, path)
     student_text = nothing
     teacher_text = nothing
     try
-        student_text = strip_teacher_annotations(text; mode=:student)
-        teacher_text = strip_teacher_annotations(text; mode=:teacher)
+        student_text = strip_reference_annotations(text; mode=:student)
+        teacher_text = strip_reference_annotations(text; mode=:teacher)
     catch err
         if err isa ArgumentError
-            _push_issue!(issues, :error, rel, nothing, sprint(showerror, err), "Fix the annotated block structure before generating a student package.")
+            _push_issue!(issues, :error, rel, nothing, sprint(showerror, err), "Fix the annotated block structure before generating a skeleton package.")
         else
             rethrow()
         end
@@ -177,7 +218,7 @@ function _validate_file!(issues, counts, root, rel, path)
 
     for line in solution_lines
         if !any(abs(line - starter) <= 8 for starter in starter_lines)
-            _push_issue!(issues, :warning, rel, line, "@solution has no nearby @starter block", "Pair each teacher solution with a student-facing starter block where practical.")
+            _push_issue!(issues, :warning, rel, line, "@solution has no nearby @starter block", "Pair each reference solution with a student-facing starter block where practical.")
         end
     end
 

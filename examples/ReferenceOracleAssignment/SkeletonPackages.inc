@@ -1,11 +1,10 @@
 ---
 [assignment]
 reference_path = "."
-skeleton_path = "../ConfiguredAssignmentStudent"
+skeleton_path = "../ReferenceOracleAssignmentStudent"
 mode = "student"
 force = false
 validate = true
-instructions_path = "student_notes.md"
 ai_policy = "recorded"
 ---
 config

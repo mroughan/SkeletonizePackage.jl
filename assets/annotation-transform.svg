@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="920" height="320" viewBox="0 0 920 320" role="img" aria-labelledby="title desc">
-  <title id="title">Annotation transformation from teacher package to student package</title>
+  <title id="title">Annotation transformation from reference package to skeleton package</title>
   <desc id="desc">SkeletonPackages keeps starter code and public tests for students while removing solution code and hidden tests.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
