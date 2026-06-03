@@ -19,6 +19,12 @@ struct ReferenceTestSpec
     line::Int
 end
 
+const _PROPERTY_CRITERION_KINDS = (:require, :forbid)
+const _SCORED_CRITERION_KINDS = (:marks, _PROPERTY_CRITERION_KINDS...)
+
+_is_property_criterion(kind::Symbol) = kind in _PROPERTY_CRITERION_KINDS
+_is_scored_criterion(kind::Symbol) = kind in _SCORED_CRITERION_KINDS
+
 """
     _parse_marks_line(stripped)
 
@@ -129,7 +135,7 @@ function _write_rubric(dst::AbstractString, items::Vector{RubricItem})
     hidden_marks = [item for item in items if item.kind == :marks && item.visibility == :hidden]
     public_properties = [item for item in items if item.kind != :marks && item.visibility == :public]
     hidden_properties = [item for item in items if item.kind != :marks && item.visibility == :hidden]
-    total = sum(item.points for item in items if item.kind in (:marks, :require, :forbid))
+    total = sum(item.points for item in items if _is_scored_criterion(item.kind))
     write(joinpath(dst, "RUBRIC.md"), """
 # Rubric
 

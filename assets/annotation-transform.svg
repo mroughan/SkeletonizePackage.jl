@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    width="980"
    height="360"
    viewBox="0 0 980 360"
@@ -14,12 +8,23 @@
    role="img"
    aria-labelledby="annotation-transform-title annotation-transform-desc"
    sodipodi:docname="annotation-transform.svg"
-   inkscape:version="1.3">
-  <title id="annotation-transform-title">Annotation transformation from reference package to skeleton package</title>
-  <desc id="annotation-transform-desc">SkeletonizePackage keeps scaffolding code, public tests, rubric information, and policy files for students while removing solution code and hidden tests.</desc>
-  <metadata id="metadata-annotation-transform">
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title
+     id="annotation-transform-title">Annotation transformation from reference package to skeleton package</title>
+  <desc
+     id="annotation-transform-desc">SkeletonizePackage keeps scaffolding code, public tests, rubric information, and policy files for students while removing solution code and hidden tests.</desc>
+  <metadata
+     id="metadata-annotation-transform">
     <rdf:RDF>
-      <cc:Work rdf:about="">
+      <cc:Work
+         rdf:about="">
         <dc:title>Annotation transformation from reference package to skeleton package</dc:title>
         <dc:format>image/svg+xml</dc:format>
       </cc:Work>
@@ -33,63 +38,333 @@
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:document-units="px"
-     showgrid="false" />
-  <defs id="defs-annotation-transform">
-    <marker id="annotation-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path id="annotation-arrow-path" d="M 0 0 L 10 5 L 0 10 z" fill="#2f4858" />
+     showgrid="false"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.3193878"
+     inkscape:cx="475.97834"
+     inkscape:cy="179.62877"
+     inkscape:window-width="1688"
+     inkscape:window-height="1088"
+     inkscape:window-x="2450"
+     inkscape:window-y="492"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="annotation-transform-svg" />
+  <defs
+     id="defs-annotation-transform">
+    <marker
+       id="annotation-arrow"
+       viewBox="0 0 10 10"
+       refX="9"
+       refY="5"
+       markerWidth="8"
+       markerHeight="8"
+       orient="auto">
+      <path
+         id="annotation-arrow-path"
+         d="M 0,0 10,5 0,10 Z"
+         fill="#2f4858" />
     </marker>
   </defs>
-  <rect id="annotation-background" width="980" height="360" fill="#f7fafc" />
-  <g id="annotation-content" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
-    <g id="annotation-card-shadows" opacity="0.11">
-      <rect x="46" y="62" width="300" height="244" rx="8" fill="#1f2933" />
-      <rect x="408" y="128" width="172" height="104" rx="8" fill="#1f2933" />
-      <rect x="642" y="62" width="300" height="244" rx="8" fill="#1f2933" />
-    </g>
-    <g id="annotation-cards">
-      <rect id="reference-card" x="42" y="58" width="300" height="244" rx="8" fill="#ffffff" stroke="#5b8def" stroke-width="2" />
-      <rect id="transform-card" x="404" y="124" width="172" height="104" rx="8" fill="#ffffff" stroke="#2f4858" stroke-width="2" />
-      <rect id="skeleton-card" x="638" y="58" width="300" height="244" rx="8" fill="#ffffff" stroke="#49a078" stroke-width="2" />
-    </g>
-
-    <text id="reference-heading" x="192" y="92" text-anchor="middle" font-size="19" font-weight="700" fill="#17212b">Teacher reference</text>
-    <text id="skeleton-heading" x="788" y="92" text-anchor="middle" font-size="19" font-weight="700" fill="#17212b">Student skeleton</text>
-    <text id="transform-heading" x="490" y="153" text-anchor="middle" font-size="17" font-weight="700" fill="#17212b">transform</text>
-    <text id="transform-detail" x="490" y="178" text-anchor="middle" font-size="13" fill="#465866">strip, reveal, write docs</text>
-    <text id="transform-function" x="490" y="200" text-anchor="middle" font-size="12" fill="#6b7c88">generate_skeleton_package</text>
-
-    <path id="arrow-reference-transform" d="M 352 176 H 392" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#annotation-arrow)" />
-    <path id="arrow-transform-skeleton" d="M 588 176 H 626" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#annotation-arrow)" />
-
-    <g id="reference-items" font-size="14">
-      <rect id="solution-row" x="72" y="116" width="240" height="30" rx="6" fill="#eaf1ff" />
-      <text x="88" y="136" fill="#17212b">@solution</text>
-      <text x="218" y="136" fill="#7b2d26">removed</text>
-      <rect id="scaffolding-row" x="72" y="154" width="240" height="30" rx="6" fill="#eaf8f0" />
-      <text x="88" y="174" fill="#17212b">@scaffolding</text>
-      <text x="236" y="174" fill="#24734f">kept</text>
-      <rect id="student-test-row" x="72" y="192" width="240" height="30" rx="6" fill="#fff5e8" />
-      <text x="88" y="212" fill="#17212b">@student_test</text>
-      <text x="236" y="212" fill="#24734f">kept</text>
-      <rect id="hidden-test-row" x="72" y="230" width="240" height="30" rx="6" fill="#f3edff" />
-      <text x="88" y="250" fill="#17212b">@hidden_test</text>
-      <text x="218" y="250" fill="#7b2d26">removed</text>
-      <rect id="requirements-row" x="72" y="268" width="240" height="30" rx="6" fill="#edf7f7" />
-      <text x="88" y="288" fill="#17212b">@require / @forbid</text>
-      <text x="225" y="288" fill="#24734f">rubric</text>
-    </g>
-
-    <g id="skeleton-items" font-size="14">
-      <rect id="skeleton-code-row" x="668" y="116" width="240" height="34" rx="6" fill="#eaf8f0" />
-      <text x="684" y="138" fill="#17212b">scaffolding implementations</text>
-      <rect id="skeleton-tests-row" x="668" y="158" width="240" height="34" rx="6" fill="#fff5e8" />
-      <text x="684" y="180" fill="#17212b">public student tests</text>
-      <rect id="skeleton-rubric-row" x="668" y="200" width="240" height="34" rx="6" fill="#edf7f7" />
-      <text x="684" y="222" fill="#17212b">RUBRIC.md + requirements</text>
-      <rect id="skeleton-policy-row" x="668" y="242" width="240" height="34" rx="6" fill="#f3edff" />
-      <text x="684" y="264" fill="#17212b">AGENTS.md policy</text>
-    </g>
-
-    <text id="annotation-footer" x="490" y="330" text-anchor="middle" font-size="13" fill="#465866">Teacher-only implementation and tests remain available to the grader, but are not shipped in the skeleton.</text>
+  <rect
+     id="annotation-background"
+     width="980"
+     height="360"
+     fill="#f7fafc" />
+  <g
+     id="annotation-card-shadows"
+     opacity="0.11"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <rect
+       x="46"
+       y="62"
+       width="300"
+       height="244"
+       rx="8"
+       fill="#1f2933"
+       id="rect10" />
+    <rect
+       x="408"
+       y="128"
+       width="172"
+       height="104"
+       rx="8"
+       fill="#1f2933"
+       id="rect12" />
+    <rect
+       x="642"
+       y="62"
+       width="300"
+       height="244"
+       rx="8"
+       fill="#1f2933"
+       id="rect14" />
   </g>
+  <g
+     id="annotation-cards"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <rect
+       id="reference-card"
+       x="42"
+       y="58"
+       width="300"
+       height="244"
+       rx="8"
+       fill="#ffffff"
+       stroke="#5b8def"
+       stroke-width="2" />
+    <rect
+       id="transform-card"
+       x="404"
+       y="124"
+       width="172"
+       height="104"
+       rx="8"
+       fill="#ffffff"
+       stroke="#2f4858"
+       stroke-width="2" />
+    <rect
+       id="skeleton-card"
+       x="638"
+       y="58"
+       width="300"
+       height="244"
+       rx="8"
+       fill="#ffffff"
+       stroke="#49a078"
+       stroke-width="2" />
+  </g>
+  <text
+     id="reference-heading"
+     x="192"
+     y="92"
+     text-anchor="middle"
+     font-size="19px"
+     font-weight="700"
+     fill="#17212b"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">Teacher reference</text>
+  <text
+     id="skeleton-heading"
+     x="788"
+     y="92"
+     text-anchor="middle"
+     font-size="19px"
+     font-weight="700"
+     fill="#17212b"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">Student skeleton</text>
+  <text
+     id="transform-heading"
+     x="490"
+     y="153"
+     text-anchor="middle"
+     font-size="17px"
+     font-weight="700"
+     fill="#17212b"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">transform</text>
+  <text
+     id="transform-detail"
+     x="490"
+     y="178"
+     text-anchor="middle"
+     font-size="13px"
+     fill="#465866"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">strip, reveal, write docs</text>
+  <text
+     id="transform-function"
+     x="490"
+     y="200"
+     text-anchor="middle"
+     font-size="12px"
+     fill="#6b7c88"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">generate_skeleton_package</text>
+  <path
+     id="arrow-reference-transform"
+     d="m 342.19765,176 h 61.24253"
+     stroke="#2f4858"
+     stroke-width="3.71209"
+     fill="none"
+     marker-end="url(#annotation-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <path
+     id="arrow-transform-skeleton"
+     d="m 576.60481,176 h 58.1233"
+     stroke="#2f4858"
+     stroke-width="3.71026"
+     fill="none"
+     marker-end="url(#annotation-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <rect
+     id="solution-row"
+     x="72"
+     y="116"
+     width="240"
+     height="30"
+     rx="6"
+     fill="#eaf1ff"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="88"
+     y="136"
+     fill="#17212b"
+     id="text29"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">@solution</text>
+  <text
+     x="232.00685"
+     y="136"
+     fill="#7b2d26"
+     id="text31"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">removed</text>
+  <rect
+     id="scaffolding-row"
+     x="72"
+     y="154"
+     width="240"
+     height="30"
+     rx="6"
+     fill="#eaf8f0"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="88"
+     y="174"
+     fill="#17212b"
+     id="text34"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">@scaffolding</text>
+  <text
+     x="232.00685"
+     y="174"
+     fill="#24734f"
+     id="text36"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">kept</text>
+  <rect
+     id="student-test-row"
+     x="72"
+     y="192"
+     width="240"
+     height="30"
+     rx="6"
+     fill="#fff5e8"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="88"
+     y="212"
+     fill="#17212b"
+     id="text39"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">@student_test</text>
+  <text
+     x="232.00685"
+     y="212"
+     fill="#24734f"
+     id="text41"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">kept</text>
+  <rect
+     id="hidden-test-row"
+     x="72"
+     y="230"
+     width="240"
+     height="30"
+     rx="6"
+     fill="#f3edff"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="88"
+     y="250"
+     fill="#17212b"
+     id="text44"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">@hidden_test</text>
+  <text
+     x="232.00685"
+     y="250"
+     fill="#7b2d26"
+     id="text46"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">removed</text>
+  <rect
+     id="requirements-row"
+     x="72"
+     y="268"
+     width="240"
+     height="30"
+     rx="6"
+     fill="#edf7f7"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="88"
+     y="288"
+     fill="#17212b"
+     id="text49"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">@require / @forbid</text>
+  <text
+     x="232.00685"
+     y="288"
+     fill="#24734f"
+     id="text51"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">rubric</text>
+  <rect
+     id="skeleton-code-row"
+     x="668"
+     y="116"
+     width="240"
+     height="34"
+     rx="6"
+     fill="#eaf8f0"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="684"
+     y="138"
+     fill="#17212b"
+     id="text55"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">scaffolded implementations</text>
+  <rect
+     id="skeleton-tests-row"
+     x="668"
+     y="158"
+     width="240"
+     height="34"
+     rx="6"
+     fill="#fff5e8"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="684"
+     y="180"
+     fill="#17212b"
+     id="text58"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">public student tests</text>
+  <rect
+     id="skeleton-rubric-row"
+     x="668"
+     y="200"
+     width="240"
+     height="34"
+     rx="6"
+     fill="#edf7f7"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="684"
+     y="222"
+     fill="#17212b"
+     id="text61"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">RUBRIC.md + requirements</text>
+  <rect
+     id="skeleton-policy-row"
+     x="668"
+     y="242"
+     width="240"
+     height="34"
+     rx="6"
+     fill="#f3edff"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <text
+     x="684"
+     y="264"
+     fill="#17212b"
+     id="text64"
+     style="font-size:14px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">AGENTS.md policy</text>
+  <text
+     id="annotation-footer"
+     x="490"
+     y="330"
+     text-anchor="middle"
+     font-size="13px"
+     fill="#465866"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">Teacher-only implementation and tests remain available to the grader, but are not shipped in the skeleton.</text>
 </svg>

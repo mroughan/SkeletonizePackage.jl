@@ -32,6 +32,9 @@ struct AssignmentConfig
     ai_policy::Symbol
 end
 
+const _AI_POLICIES = (:forbidden, :recorded, :allowed)
+const _AI_POLICY_ERROR = "ai_policy must be forbidden, recorded, or allowed"
+
 """
     read_assignment_config(path="SkeletonizePackage.inc")
 
@@ -126,10 +129,10 @@ function _metadata_bool(value, name::AbstractString)
 end
 
 function _metadata_ai_policy(value)
-    value isa Symbol && value in (:forbidden, :recorded, :allowed) && return value
-    value isa AbstractString || throw(ArgumentError("ai_policy must be forbidden, recorded, or allowed"))
+    value isa Symbol && value in _AI_POLICIES && return value
+    value isa AbstractString || throw(ArgumentError(_AI_POLICY_ERROR))
     policy = Symbol(lowercase(strip(value)))
-    policy in (:forbidden, :recorded, :allowed) || throw(ArgumentError("ai_policy must be forbidden, recorded, or allowed"))
+    policy in _AI_POLICIES || throw(ArgumentError(_AI_POLICY_ERROR))
     return policy
 end
 

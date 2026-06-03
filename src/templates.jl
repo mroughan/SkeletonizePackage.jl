@@ -333,7 +333,7 @@ AI tools must not be used to attack, bypass, or infer hidden grading tests, fake
 outputs, falsify logs, or misrepresent the student's understanding.
 """
     else
-        throw(ArgumentError("ai_policy must be forbidden, recorded, or allowed"))
+        throw(ArgumentError(_AI_POLICY_ERROR))
     end
 end
 
@@ -361,7 +361,7 @@ is not copied into generated student skeletons.
 """
 function write_grading_plan(reference_path::AbstractString; plan_path::AbstractString=joinpath(reference_path, "GRADING_PLAN.md"), items=nothing)
     rubric = items === nothing ? _collect_rubric(reference_path) : items
-    total = sum(item.points for item in rubric if item.kind in (:marks, :require, :forbid))
+    total = sum(item.points for item in rubric if _is_scored_criterion(item.kind))
     io = IOBuffer()
     println(io, "# Teacher Grading Plan")
     println(io)

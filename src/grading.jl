@@ -242,7 +242,7 @@ function _run_property_checks(submission_path::AbstractString, rubric::Vector{Ru
     project = _source_project_from_path(abspath(submission_path))
     results = PropertyCheckResult[]
     for item in rubric
-        item.kind in (:require, :forbid) || continue
+        _is_property_criterion(item.kind) || continue
         item.spec === nothing && continue
         try
             holds = _property_holds(project, Main, item.spec)
@@ -425,7 +425,7 @@ end
 function _rubric_points_by_category(items::Vector{RubricItem})
     points = Dict{String, Int}()
     for item in items
-        item.kind in (:marks, :require, :forbid) || continue
+        _is_scored_criterion(item.kind) || continue
         category = String(item.visibility)
         points[category] = get(points, category, 0) + item.points
     end
@@ -441,7 +441,7 @@ function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector
             awarded = passed ? item.points : 0
             message = zeroed ? "assignment zeroed by a gating requirement" : passed ? "behavioural tests passed" : "behavioural tests failed"
             push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, awarded, item.description, passed, message, item.zero_marks))
-        elseif item.kind in (:require, :forbid)
+        elseif _is_property_criterion(item.kind)
             result = isempty(property_queue) ? nothing : popfirst!(property_queue)
             passed = result !== nothing && result.passed && !zeroed
             awarded = passed ? item.points : 0
@@ -465,7 +465,7 @@ function _awarded_points_by_category(rubric::Vector{RubricItem}, criterion_resul
     possible = _rubric_points_by_category(rubric)
     awarded = Dict(category => 0 for category in keys(possible))
     for result in criterion_results
-        result.kind in (:marks, :require, :forbid) || continue
+        _is_scored_criterion(result.kind) || continue
         category = String(result.visibility)
         awarded[category] = get(awarded, category, 0) + result.awarded
     end
@@ -497,7 +497,7 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
     end
     println(io)
     println(io, "## Rubric Results")
-    marked_results = [result for result in criterion_results if result.kind in (:marks, :require, :forbid)]
+    marked_results = [result for result in criterion_results if _is_scored_criterion(result.kind)]
     if isempty(marked_results)
         println(io)
         println(io, "No marked criteria were available.")
@@ -515,7 +515,7 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
         property_queue = copy(property_results)
         for item in properties
             println(io)
-            if item.kind in (:require, :forbid) && !isempty(property_queue)
+            if _is_property_criterion(item.kind) && !isempty(property_queue)
                 result = popfirst!(property_queue)
                 status = result.passed ? "passed" : "failed"
                 points = result.passed ? result.points : 0
@@ -676,7 +676,7 @@ function _build_gradescope_json(student_id::AbstractString, criterion_results::V
     println(io, "  \"output\": ", _json_string("Student: $student_id"), ",")
     println(io, "  \"visibility\": \"after_published\",")
     print(io,   "  \"tests\": [")
-    tests = [r for r in criterion_results if r.kind in (:marks, :require, :forbid)]
+    tests = [r for r in criterion_results if _is_scored_criterion(r.kind)]
     if isempty(tests)
         println(io, "]")
     else

@@ -346,33 +346,44 @@ function _has_import(project::SourceProject, name::Symbol)
 end
 
 function _calls(project::SourceProject, function_name::Union{Nothing, Symbol}, callee::Symbol)
-    raw = function_name === nothing ? project.text : get(project.functions, function_name, SourceFunction(function_name, String[], "", "")).body
+    raw = if function_name === nothing
+        project.text
+    else
+        body = _function_body(project, function_name)
+        body === nothing ? "" : body
+    end
     return occursin(Regex("\\b$(callee)\\s*\\("), _strip_code_noise(raw))
 end
 
-function _uses_operator(project::SourceProject, function_name::Symbol, operator::AbstractString)
+function _function_body(project::SourceProject, function_name::Symbol)
     f = get(project.functions, function_name, nothing)
-    f === nothing && return false
-    return occursin(operator, _strip_code_noise(f.body))
+    f === nothing && return nothing
+    return f.body
+end
+
+function _uses_operator(project::SourceProject, function_name::Symbol, operator::AbstractString)
+    body = _function_body(project, function_name)
+    body === nothing && return false
+    return occursin(operator, _strip_code_noise(body))
 end
 
 function _has_loop(project::SourceProject, function_name::Symbol)
-    f = get(project.functions, function_name, nothing)
-    f === nothing && return false
-    clean = _strip_code_noise(f.body)
+    body = _function_body(project, function_name)
+    body === nothing && return false
+    clean = _strip_code_noise(body)
     return occursin(_RE_LOOP_KEYWORD, clean)
 end
 
 function _has_global(project::SourceProject, function_name::Symbol)
-    f = get(project.functions, function_name, nothing)
-    f === nothing && return false
-    return occursin(_RE_GLOBAL_KEYWORD, _strip_code_noise(f.body))
+    body = _function_body(project, function_name)
+    body === nothing && return false
+    return occursin(_RE_GLOBAL_KEYWORD, _strip_code_noise(body))
 end
 
 function _has_side_effects(project::SourceProject, function_name::Symbol)
-    f = get(project.functions, function_name, nothing)
-    f === nothing && return false
-    clean = _strip_code_noise(f.body)
+    body = _function_body(project, function_name)
+    body === nothing && return false
+    clean = _strip_code_noise(body)
     return occursin(_RE_SIDE_EFFECTS, clean) || occursin(_RE_INDEXED_ASSIGN, clean)
 end
 

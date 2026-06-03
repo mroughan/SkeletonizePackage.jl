@@ -227,6 +227,7 @@ macro reference_test(args...)
 end
 
 const ANNOTATION_OPENERS = Set(["@solution", "@scaffolding", "@student_test", "@hidden_test"])
+const ANNOTATION_BLOCK_OPENERS = Set(["$name begin" for name in ANNOTATION_OPENERS])
 const TEACHER_ONLY_DIRS = Set([".git", "build", "solutions", ".julia", ".CondaPkg"])
 const TEACHER_ONLY_FILES = Set(["GRADING_PLAN.md", "TEACHER_CHECKLIST.md", "student_notes.md"])
 const TRANSFORMED_EXTENSIONS = (".jl", ".md", ".toml", ".inc")
@@ -278,7 +279,7 @@ function strip_reference_annotations(text::AbstractString; mode::Symbol=:student
     while i <= length(lines)
         line = lines[i]
         stripped = strip(line)
-        if stripped in ("@solution begin", "@scaffolding begin", "@student_test begin", "@hidden_test begin")
+        if stripped in ANNOTATION_BLOCK_OPENERS
             macro_name = split(stripped)[1]
             block, j = _collect_block(lines, i)
             if _keep_body(macro_name, mode)

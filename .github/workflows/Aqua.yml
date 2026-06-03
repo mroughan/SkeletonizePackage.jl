@@ -19,12 +19,11 @@ jobs:
         with:
           version: '1.12'
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
       - name: Run Aqua quality checks
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          Pkg.activate(; temp=true)
+          Pkg.activate("test")
           Pkg.develop(PackageSpec(path=pwd()))
-          Pkg.add(PackageSpec(name="Aqua", version="0.8"))
+          Pkg.instantiate()
           include(joinpath(pwd(), "test", "aqua.jl"))
