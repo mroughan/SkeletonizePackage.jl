@@ -1,6 +1,8 @@
 # SkeletonizePackage.jl
 
 [![CI](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/CI.yml)
+[![Aqua](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/Aqua.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/Aqua.yml)
+[![JET](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/JET.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/JET.yml)
 [![Documentation](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/documentation.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/documentation.yml)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://mroughan.github.io/SkeletonizePackage.jl/dev/)
 [![codecov](https://codecov.io/gh/mroughan/SkeletonizePackage.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/mroughan/SkeletonizePackage.jl)
