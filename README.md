@@ -11,7 +11,7 @@
 teacher reference package into a student skeleton package. Students complete the
 skeleton to create their submission package.
 
-## Features
+## Features 
 
 - Step 0 teacher scaffolding with `create_assignment(...)` or the `init` CLI
   command.
