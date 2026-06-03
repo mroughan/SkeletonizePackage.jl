@@ -1,25 +1,30 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   width="1280"
-   height="430"
-   viewBox="0 0 1280 430"
+   width="1268.2524"
+   height="345.45291"
+   viewBox="0 0 1268.2524 345.45291"
    version="1.1"
    id="workflow-pipeline-svg"
    role="img"
    aria-labelledby="workflow-pipeline-title workflow-pipeline-desc"
    sodipodi:docname="workflow-pipeline.svg"
-   inkscape:version="1.3">
-  <title id="workflow-pipeline-title">SkeletonizePackage.jl full workflow pipeline</title>
-  <desc id="workflow-pipeline-desc">Full pipeline from teacher setup, to an iterative reference validation loop, then skeleton package, student submission, grading, and reporting.</desc>
-  <metadata id="metadata-workflow-pipeline">
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title
+     id="workflow-pipeline-title">SkeletonizePackage.jl full workflow pipeline</title>
+  <desc
+     id="workflow-pipeline-desc">Full pipeline from teacher setup, to an iterative reference validation loop, then skeleton package, student submission, grading, and reporting.</desc>
+  <metadata
+     id="metadata-workflow-pipeline">
     <rdf:RDF>
-      <cc:Work rdf:about="">
+      <cc:Work
+         rdf:about="">
         <dc:title>SkeletonizePackage.jl full workflow pipeline</dc:title>
         <dc:format>image/svg+xml</dc:format>
       </cc:Work>
@@ -33,109 +38,485 @@
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:document-units="px"
-     showgrid="false" />
-  <defs id="defs-workflow-pipeline">
-    <marker id="workflow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f4858" id="workflow-arrow-path" />
+     showgrid="false"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.009375"
+     inkscape:cx="635.04644"
+     inkscape:cy="344.27245"
+     inkscape:window-width="1870"
+     inkscape:window-height="1087"
+     inkscape:window-x="2450"
+     inkscape:window-y="493"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="workflow-pipeline-svg" />
+  <defs
+     id="defs-workflow-pipeline">
+    <marker
+       id="workflow-arrow"
+       viewBox="0 0 10 10"
+       refX="9"
+       refY="5"
+       markerWidth="8"
+       markerHeight="8"
+       orient="auto">
+      <path
+         d="M 0,0 10,5 0,10 Z"
+         fill="#2f4858"
+         id="workflow-arrow-path" />
     </marker>
   </defs>
-  <rect id="workflow-background" width="1280" height="430" fill="#f7fafc" />
-  <g id="workflow-content" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
-    <text id="workflow-heading" x="640" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#17212b">SkeletonizePackage.jl Pipeline</text>
-    <text id="workflow-subheading" x="640" y="68" text-anchor="middle" font-size="14" fill="#465866">teacher reference package to student skeleton to submission grading and reports</text>
-
-    <g id="workflow-card-shadows" opacity="0.12">
-      <rect x="28" y="118" width="150" height="112" rx="8" fill="#1f2933" />
-      <rect x="208" y="118" width="150" height="112" rx="8" fill="#1f2933" />
-      <rect x="428" y="118" width="150" height="112" rx="8" fill="#1f2933" />
-      <rect x="648" y="118" width="150" height="112" rx="8" fill="#1f2933" />
-      <rect x="868" y="118" width="150" height="112" rx="8" fill="#1f2933" />
-      <rect x="1088" y="118" width="150" height="112" rx="8" fill="#1f2933" />
-      <rect x="208" y="264" width="150" height="82" rx="8" fill="#1f2933" />
-    </g>
-    <g id="workflow-cards">
-      <rect id="step-0-card" x="24" y="114" width="150" height="112" rx="8" fill="#ffffff" stroke="#607d8b" stroke-width="2" />
-      <rect id="step-1-card" x="204" y="114" width="150" height="112" rx="8" fill="#ffffff" stroke="#5b8def" stroke-width="2" />
-      <rect id="step-2-card" x="204" y="260" width="150" height="82" rx="8" fill="#ffffff" stroke="#4f6f7a" stroke-width="2" />
-      <rect id="step-3-card" x="424" y="114" width="150" height="112" rx="8" fill="#ffffff" stroke="#49a078" stroke-width="2" />
-      <rect id="step-4-card" x="644" y="114" width="150" height="112" rx="8" fill="#ffffff" stroke="#f2a65a" stroke-width="2" />
-      <rect id="step-5-card" x="864" y="114" width="150" height="112" rx="8" fill="#ffffff" stroke="#8357c5" stroke-width="2" />
-      <rect id="step-6-card" x="1084" y="114" width="150" height="112" rx="8" fill="#ffffff" stroke="#2d7f7b" stroke-width="2" />
-    </g>
-
-    <g id="step-0-text">
-      <text x="99" y="143" text-anchor="middle" font-size="14" font-weight="700" fill="#607d8b">Step 0</text>
-      <text x="99" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Setup</text>
-      <text x="99" y="187" text-anchor="middle" font-size="12" fill="#465866">create_assignment</text>
-      <text x="99" y="205" text-anchor="middle" font-size="12" fill="#6b7c88">config and examples</text>
-    </g>
-    <g id="step-1-text">
-      <text x="279" y="143" text-anchor="middle" font-size="14" font-weight="700" fill="#5b8def">Step 1</text>
-      <text x="279" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Reference</text>
-      <text x="279" y="187" text-anchor="middle" font-size="12" fill="#465866">teacher package</text>
-      <text x="279" y="205" text-anchor="middle" font-size="12" fill="#6b7c88">solutions and tests</text>
-    </g>
-    <g id="step-2-text">
-      <text x="279" y="285" text-anchor="middle" font-size="14" font-weight="700" fill="#4f6f7a">Step 2</text>
-      <text x="279" y="308" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Validate</text>
-      <text x="279" y="329" text-anchor="middle" font-size="12" fill="#465866">syntax + design</text>
-    </g>
-    <g id="step-3-text">
-      <text x="499" y="143" text-anchor="middle" font-size="14" font-weight="700" fill="#49a078">Step 3</text>
-      <text x="499" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Skeleton</text>
-      <text x="499" y="187" text-anchor="middle" font-size="12" fill="#465866">student package</text>
-      <text x="499" y="205" text-anchor="middle" font-size="12" fill="#6b7c88">RUBRIC + AGENTS</text>
-    </g>
-    <g id="step-4-text">
-      <text x="719" y="143" text-anchor="middle" font-size="14" font-weight="700" fill="#c57b28">Step 4</text>
-      <text x="719" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Submission</text>
-      <text x="719" y="187" text-anchor="middle" font-size="12" fill="#465866">student completes</text>
-      <text x="719" y="205" text-anchor="middle" font-size="12" fill="#6b7c88">same assignment API</text>
-    </g>
-    <g id="step-5-text">
-      <text x="939" y="143" text-anchor="middle" font-size="14" font-weight="700" fill="#8357c5">Step 5</text>
-      <text x="939" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Grade</text>
-      <text x="939" y="187" text-anchor="middle" font-size="12" fill="#465866">public + hidden</text>
-      <text x="939" y="205" text-anchor="middle" font-size="12" fill="#6b7c88">reference checks</text>
-    </g>
-    <g id="step-6-text">
-      <text x="1159" y="143" text-anchor="middle" font-size="14" font-weight="700" fill="#2d7f7b">Step 6</text>
-      <text x="1159" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Reports</text>
-      <text x="1159" y="187" text-anchor="middle" font-size="12" fill="#465866">feedback markdown</text>
-      <text x="1159" y="205" text-anchor="middle" font-size="12" fill="#6b7c88">marks CSV row</text>
-    </g>
-
-    <path id="arrow-0-1" d="M 184 170 H 194" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
-    <path id="arrow-1-3" d="M 364 170 H 414" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
-    <path id="arrow-3-4" d="M 584 170 H 634" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
-    <path id="arrow-4-5" d="M 804 170 H 854" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
-    <path id="arrow-5-6" d="M 1024 170 H 1074" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
-    <path id="arrow-reference-validate" d="M 279 236 V 250" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
-    <path id="arrow-validate-reference" d="M 204 301 C 154 301 154 238 194 228" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
-
-    <text id="flow-0-1" x="189" y="106" text-anchor="middle" font-size="11" fill="#2f4858">edit</text>
-    <text id="flow-1-3" x="389" y="106" text-anchor="middle" font-size="11" fill="#2f4858">generate after checks</text>
-    <text id="flow-3-4" x="609" y="106" text-anchor="middle" font-size="11" fill="#2f4858">complete</text>
-    <text id="flow-4-5" x="829" y="106" text-anchor="middle" font-size="11" fill="#2f4858">assess</text>
-    <text id="flow-5-6" x="1049" y="106" text-anchor="middle" font-size="11" fill="#2f4858">summarise</text>
-    <text id="flow-reference-validate" x="302" y="247" text-anchor="start" font-size="11" fill="#2f4858">check</text>
-    <text id="flow-validate-reference" x="150" y="277" text-anchor="middle" font-size="11" fill="#2f4858">fix and rerun</text>
-
-    <g id="workflow-output-shadows" opacity="0.10">
-      <rect x="212" y="360" width="326" height="54" rx="8" fill="#1f2933" />
-      <rect x="570" y="360" width="326" height="54" rx="8" fill="#1f2933" />
-      <rect x="928" y="360" width="326" height="54" rx="8" fill="#1f2933" />
-    </g>
-    <g id="workflow-outputs">
-      <rect id="teacher-artifacts-box" x="208" y="356" width="326" height="54" rx="8" fill="#eef4ff" stroke="#5b8def" stroke-width="1.5" />
-      <text x="371" y="379" text-anchor="middle" font-size="13" font-weight="700" fill="#17212b">reference artifacts</text>
-      <text x="371" y="399" text-anchor="middle" font-size="12" fill="#465866">@solution, @hidden_test, requirements, INC config</text>
-      <rect id="student-artifacts-box" x="566" y="356" width="326" height="54" rx="8" fill="#eaf8f0" stroke="#49a078" stroke-width="1.5" />
-      <text x="729" y="379" text-anchor="middle" font-size="13" font-weight="700" fill="#17212b">student artifacts</text>
-      <text x="729" y="399" text-anchor="middle" font-size="12" fill="#465866">@scaffolding, public tests, RUBRIC.md, AGENTS.md</text>
-      <rect id="grading-artifacts-box" x="924" y="356" width="326" height="54" rx="8" fill="#f3edff" stroke="#8357c5" stroke-width="1.5" />
-      <text x="1087" y="379" text-anchor="middle" font-size="13" font-weight="700" fill="#17212b">grading artifacts</text>
-      <text x="1087" y="399" text-anchor="middle" font-size="12" fill="#465866">student feedback report and category marks CSV</text>
+  <text
+     id="workflow-heading"
+     x="662.71503"
+     y="18.421875"
+     text-anchor="middle"
+     font-size="24px"
+     font-weight="700"
+     fill="#17212b"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">SkeletonizePackage.jl Pipeline</text>
+  <g
+     id="g1121"
+     transform="translate(-23,-32.43993)">
+    <rect
+       id="step-0-card"
+       x="24"
+       y="114"
+       width="150"
+       height="112"
+       rx="8"
+       fill="#ffffff"
+       stroke="#607d8b"
+       stroke-width="2"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+    <text
+       x="99"
+       y="143"
+       text-anchor="middle"
+       font-size="14px"
+       font-weight="700"
+       fill="#607d8b"
+       id="text35"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">Step 0</text>
+    <text
+       x="99"
+       y="166"
+       text-anchor="middle"
+       font-size="18px"
+       font-weight="700"
+       fill="#17212b"
+       id="text37"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">Setup</text>
+    <text
+       x="99"
+       y="205"
+       text-anchor="middle"
+       font-size="12px"
+       fill="#6b7c88"
+       id="text41"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  </g>
+  <g
+     id="g1135"
+     transform="translate(20.250484,-32.43993)">
+    <rect
+       id="step-1-card"
+       x="204"
+       y="114"
+       width="150"
+       height="112"
+       rx="8"
+       fill="#ffffff"
+       stroke="#5b8def"
+       stroke-width="2"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+    <g
+       id="step-1-text"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <text
+         x="279"
+         y="143"
+         text-anchor="middle"
+         font-size="14px"
+         font-weight="700"
+         fill="#5b8def"
+         id="text44">Step 1</text>
+      <text
+         x="279"
+         y="166"
+         text-anchor="middle"
+         font-size="18px"
+         font-weight="700"
+         fill="#17212b"
+         id="text46">Reference</text>
+      <text
+         x="279"
+         y="187"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#465866"
+         id="text48">teacher package</text>
+      <text
+         x="279"
+         y="205"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#6b7c88"
+         id="text50">solutions and tests</text>
     </g>
   </g>
+  <g
+     id="g1402"
+     transform="translate(21.06637,2.45292)">
+    <rect
+       id="step-2-card"
+       x="204"
+       y="260"
+       width="150"
+       height="82"
+       rx="8"
+       fill="#ffffff"
+       stroke="#4f6f7a"
+       stroke-width="2"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+    <g
+       id="step-2-text"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <text
+         x="279"
+         y="285"
+         text-anchor="middle"
+         font-size="14px"
+         font-weight="700"
+         fill="#4f6f7a"
+         id="text53">Step 2</text>
+      <text
+         x="279"
+         y="308"
+         text-anchor="middle"
+         font-size="18px"
+         font-weight="700"
+         fill="#17212b"
+         id="text55">Validate</text>
+      <text
+         x="279"
+         y="329"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#465866"
+         id="text57">syntax + design</text>
+    </g>
+  </g>
+  <g
+     id="g1149"
+     transform="translate(23.500968,-32.43993)">
+    <rect
+       id="step-3-card"
+       x="424"
+       y="114"
+       width="150"
+       height="112"
+       rx="8"
+       fill="#ffffff"
+       stroke="#49a078"
+       stroke-width="2"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+    <g
+       id="step-3-text"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <text
+         x="499"
+         y="143"
+         text-anchor="middle"
+         font-size="14px"
+         font-weight="700"
+         fill="#49a078"
+         id="text60">Step 3</text>
+      <text
+         x="499"
+         y="166"
+         text-anchor="middle"
+         font-size="18px"
+         font-weight="700"
+         fill="#17212b"
+         id="text62">Skeleton</text>
+      <text
+         x="499"
+         y="187"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#465866"
+         id="text64">student package</text>
+      <text
+         x="499"
+         y="205"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#6b7c88"
+         id="text66">RUBRIC + AGENTS</text>
+    </g>
+  </g>
+  <g
+     id="g1163"
+     transform="translate(26.751451,-32.43993)">
+    <rect
+       id="step-4-card"
+       x="644"
+       y="114"
+       width="150"
+       height="112"
+       rx="8"
+       fill="#ffffff"
+       stroke="#f2a65a"
+       stroke-width="2"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+    <g
+       id="step-4-text"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <text
+         x="719"
+         y="143"
+         text-anchor="middle"
+         font-size="14px"
+         font-weight="700"
+         fill="#c57b28"
+         id="text69">Step 4</text>
+      <text
+         x="719"
+         y="166"
+         text-anchor="middle"
+         font-size="18px"
+         font-weight="700"
+         fill="#17212b"
+         id="text71">Submission</text>
+      <text
+         x="719"
+         y="187"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#465866"
+         id="text73">student completes</text>
+      <text
+         x="719"
+         y="205"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#6b7c88"
+         id="text75">same assignment API</text>
+    </g>
+  </g>
+  <g
+     id="g1177"
+     transform="translate(30.001935,-32.43993)">
+    <rect
+       id="step-5-card"
+       x="864"
+       y="114"
+       width="150"
+       height="112"
+       rx="8"
+       fill="#ffffff"
+       stroke="#8357c5"
+       stroke-width="2"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+    <g
+       id="step-5-text"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <text
+         x="939"
+         y="143"
+         text-anchor="middle"
+         font-size="14px"
+         font-weight="700"
+         fill="#8357c5"
+         id="text78">Step 5</text>
+      <text
+         x="939"
+         y="166"
+         text-anchor="middle"
+         font-size="18px"
+         font-weight="700"
+         fill="#17212b"
+         id="text80">Grade</text>
+      <text
+         x="939"
+         y="187"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#465866"
+         id="text82">public + hidden</text>
+      <text
+         x="939"
+         y="205"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#6b7c88"
+         id="text84">reference checks</text>
+    </g>
+  </g>
+  <g
+     id="g1191"
+     transform="translate(33.252419,-32.43993)">
+    <rect
+       id="step-6-card"
+       x="1084"
+       y="114"
+       width="150"
+       height="112"
+       rx="8"
+       fill="#ffffff"
+       stroke="#2d7f7b"
+       stroke-width="2"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+    <g
+       id="step-6-text"
+       style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <text
+         x="1159"
+         y="143"
+         text-anchor="middle"
+         font-size="14px"
+         font-weight="700"
+         fill="#2d7f7b"
+         id="text87">Step 6</text>
+      <text
+         x="1159"
+         y="166"
+         text-anchor="middle"
+         font-size="18px"
+         font-weight="700"
+         fill="#17212b"
+         id="text89">Reports</text>
+      <text
+         x="1159"
+         y="187"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#465866"
+         id="text91">feedback markdown</text>
+      <text
+         x="1159"
+         y="205"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#6b7c88"
+         id="text93">marks CSV row</text>
+    </g>
+  </g>
+  <path
+     id="arrow-1-3"
+     d="m 375.37113,137.56007 h 70.87909"
+     stroke="#2f4858"
+     stroke-width="3.57187"
+     fill="none"
+     marker-end="url(#workflow-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <path
+     id="arrow-validate-reference"
+     d="m 252.61408,261.97547 c -21.29594,-20.92408 -19.77577,-42.94903 3.29209,-68.35574"
+     stroke="#2f4858"
+     stroke-width="2.7587"
+     fill="none"
+     marker-end="url(#workflow-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif"
+     sodipodi:nodetypes="cc" />
+  <text
+     id="flow-0-1"
+     x="-110.98776"
+     y="190.57954"
+     text-anchor="middle"
+     font-size="11px"
+     fill="#2f4858"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif;-inkscape-font-specification:'Inter, Segoe UI, Helvetica, Arial, sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"
+     transform="rotate(-90)"
+     inkscape:transform-center-x="-47.405911"
+     inkscape:transform-center-y="-13.167932">edit</text>
+  <text
+     id="flow-1-3"
+     x="-84.92009"
+     y="409.19211"
+     text-anchor="middle"
+     font-size="11px"
+     fill="#2f4858"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif;-inkscape-font-specification:'Inter, Segoe UI, Helvetica, Arial, sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"
+     transform="rotate(-90)">generate</text>
+  <text
+     id="flow-3-4"
+     x="-83.039886"
+     y="636.71521"
+     text-anchor="middle"
+     font-size="11px"
+     fill="#2f4858"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif;-inkscape-font-specification:'Inter, Segoe UI, Helvetica, Arial, sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"
+     transform="rotate(-90)"
+     inkscape:transform-center-x="-24.2872"
+     inkscape:transform-center-y="-25.81747">complete</text>
+  <text
+     id="flow-4-5"
+     x="-94.935699"
+     y="860.70044"
+     text-anchor="middle"
+     font-size="11px"
+     fill="#2f4858"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif;-inkscape-font-specification:'Inter, Segoe UI, Helvetica, Arial, sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"
+     transform="rotate(-90)">assess</text>
+  <text
+     id="flow-5-6"
+     x="-74.62323"
+     y="1082.7058"
+     text-anchor="middle"
+     font-size="11px"
+     fill="#2f4858"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif;-inkscape-font-specification:'Inter, Segoe UI, Helvetica, Arial, sans-serif, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal"
+     transform="rotate(-90)">summarise</text>
+  <text
+     id="flow-validate-reference"
+     x="299.79291"
+     y="232.42519"
+     text-anchor="middle"
+     font-size="11px"
+     fill="#2f4858"
+     style="font-size:16px;font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif">fix and rerun</text>
+  <path
+     id="path1235"
+     d="m 598.13792,137.56007 h 70.87909"
+     stroke="#2f4858"
+     stroke-width="3.57187"
+     fill="none"
+     marker-end="url(#workflow-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <path
+     id="path1243"
+     d="m 820.14934,137.56007 h 70.87909"
+     stroke="#2f4858"
+     stroke-width="3.57187"
+     fill="none"
+     marker-end="url(#workflow-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <path
+     id="path1251"
+     d="m 1043.3994,137.56007 h 70.8791"
+     stroke="#2f4858"
+     stroke-width="3.57187"
+     fill="none"
+     marker-end="url(#workflow-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <path
+     id="path1259"
+     d="m 152.14192,137.56007 h 70.8791"
+     stroke="#2f4858"
+     stroke-width="3.57187"
+     fill="none"
+     marker-end="url(#workflow-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif" />
+  <path
+     id="path1518"
+     d="m 345.0104,193.30449 c 21.29594,20.92408 19.77577,42.94903 -3.29209,68.35574"
+     stroke="#2f4858"
+     stroke-width="2.7587"
+     fill="none"
+     marker-end="url(#workflow-arrow)"
+     style="font-family:Inter, 'Segoe UI', Helvetica, Arial, sans-serif"
+     sodipodi:nodetypes="cc" />
 </svg>
