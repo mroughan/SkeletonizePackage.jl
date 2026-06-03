@@ -5,7 +5,7 @@
 [![JET](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/JET.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/JET.yml)
 [![Documentation](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/documentation.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/documentation.yml)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://mroughan.github.io/SkeletonizePackage.jl/dev/)
-[![codecov](https://codecov.io/gh/mroughan/SkeletonizePackage.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/mroughan/SkeletonizePackage.jl)
+[![codecov](https://codecov.io/gh/mroughan/SkeletonizePackage.jl/branch/main/graph/badge.svg?token=pMUMsG0QuO)](https://app.codecov.io/gh/mroughan/SkeletonizePackage.jl)
 [![Julia](https://img.shields.io/badge/julia-1.10%2B-blue.svg)](https://julialang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 

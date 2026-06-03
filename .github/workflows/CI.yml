@@ -39,4 +39,7 @@ jobs:
       - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
+          flags: julia-${{ matrix.version }}
           fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
