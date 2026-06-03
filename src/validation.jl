@@ -1,3 +1,12 @@
+# Maximum line distance between a @solution block and its paired @scaffolding block.
+# Chosen to be larger than a typical short function body but small enough to flag
+# solution blocks that genuinely have no corresponding student placeholder.
+const _SCAFFOLDING_PROXIMITY_LINES = 8
+
+# Patterns that indicate a scaffolding block already contains a student prompt or
+# failing placeholder, so no warning is needed.
+const _RE_SCAFFOLDING_PROMPT = r"TODO|FIXME|error\(|throw\(|\bmissing\b|unimplemented"i
+
 """
     ValidationIssue
 
@@ -16,15 +25,6 @@ julia> sprint(show, issue)
 "WARNING test/runtests.jl:3: no @student_test blocks found\\n  suggestion: Add visible tests."
 ```
 """
-# Maximum line distance between a @solution block and its paired @scaffolding block.
-# Chosen to be larger than a typical short function body but small enough to flag
-# solution blocks that genuinely have no corresponding student placeholder.
-const _SCAFFOLDING_PROXIMITY_LINES = 8
-
-# Patterns that indicate a scaffolding block already contains a student prompt or
-# failing placeholder, so no warning is needed.
-const _RE_SCAFFOLDING_PROMPT = r"TODO|FIXME|error\(|throw\(|\bmissing\b|unimplemented"i
-
 struct ValidationIssue
     severity::Symbol
     path::String
