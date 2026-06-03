@@ -7,6 +7,28 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+### Fixed (reliability refinements — session 3)
+
+- `_criterion_results`: reference-test criterion items now match by function name as well
+  as visibility, fixing a logic bug where multiple `@reference_test` entries in the same
+  annotation block were conflated into every reference-test criterion.
+- `_json_string`: full RFC 8259 control-character escaping (U+0000–U+001F) added; previously
+  only `\n`, `\r`, `\t` were escaped, producing invalid JSON when stderr contained other
+  control characters.
+- `_build_html_report`: unclosed fenced code block (` ``` ` with no closing fence) no
+  longer leaves the rest of the HTML document inside a `<pre>` tag.
+- `_fmt_inline`: an odd number of backticks in a description (unmatched single backtick)
+  now falls back to plain HTML-escaped text rather than wrapping the trailing fragment
+  in a `<code>` span.
+- `grade_submission`: `csv_format` is now validated at the top of the function, before any
+  subprocess grading runs, so an invalid format symbol fails fast with a clear message.
+- `generate_skeleton_package`: `instructions_path` is now absolutized once and the absolute
+  path used for both the skip-during-copy check and the `_write_student_instructions` call,
+  making it robust to working-directory changes between the two points.
+- `read_assignment_config`: `mode` value from the config file is now validated as `"student"`
+  or `"teacher"` with a clear `ArgumentError`; previously an invalid mode silently became a
+  Symbol that only failed much later.
+
 ### Added (code quality and correctness — session 1)
 
 - `_strip_code_noise(text)` state-machine preprocessor that replaces comment and

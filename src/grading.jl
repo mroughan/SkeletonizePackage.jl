@@ -191,6 +191,8 @@ function grade_submission(
 )
     isdir(reference_path) || throw(ArgumentError("reference_path is not a directory"))
     isdir(submission_path) || throw(ArgumentError("submission_path is not a directory"))
+    csv_format in (:default, :canvas, :moodle, :blackboard) ||
+        throw(ArgumentError("unknown csv_format :$csv_format — choose :default, :canvas, :moodle, or :blackboard"))
     selected_test_path = test_path === nothing ? joinpath(submission_path, "test", "runtests.jl") : test_path
     isfile(selected_test_path) || throw(ArgumentError("test_path is not a file: $selected_test_path"))
 
@@ -411,6 +413,15 @@ serialize(output_path, results)
 """
 end
 
+# Extract the function name from a reference-test rubric item description such as
+# "reference behaviour `foo generator=1:10`". Returns nothing if the pattern
+# does not match (fallback: match all results with the same visibility).
+function _reference_test_fn_name(description::AbstractString)
+    m = match(r"^reference behaviour `([A-Za-z_]\w*)\b", description)
+    m === nothing && return nothing
+    return Symbol(m.captures[1])
+end
+
 function _rubric_points_by_category(items::Vector{RubricItem})
     points = Dict{String, Int}()
     for item in items
@@ -438,7 +449,10 @@ function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector
             zeroed && (message = "assignment zeroed by a gating requirement")
             push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, awarded, item.description, passed, message, item.zero_marks))
         elseif item.kind == :reference_test
-            related = [result for result in reference_results if result.visibility == item.visibility]
+            fn = _reference_test_fn_name(item.description)
+            related = [r for r in reference_results
+                       if r.visibility == item.visibility &&
+                          (fn === nothing || r.function_name == fn)]
             passed = !isempty(related) && all(result -> result.passed, related)
             message = isempty(related) ? "reference test metadata only" : passed ? "all generated inputs matched" : "one or more generated inputs failed"
             push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, 0, item.description, passed, message, item.zero_marks))
@@ -631,9 +645,21 @@ end
 # ── JSON helpers ──────────────────────────────────────────────────────────────
 
 function _json_string(s::AbstractString)
-    s = replace(s, "\\" => "\\\\", "\"" => "\\\"", "\n" => "\\n",
-                    "\r" => "\\r",  "\t" => "\\t")
-    return "\"" * s * "\""
+    # Full RFC 8259 §7 escaping: backslash, quote, and all control chars U+0000–U+001F.
+    io = IOBuffer()
+    write(io, '"')
+    for c in s
+        if     c == '\\'  ; write(io, "\\\\")
+        elseif c == '"'   ; write(io, "\\\"")
+        elseif c == '\n'  ; write(io, "\\n")
+        elseif c == '\r'  ; write(io, "\\r")
+        elseif c == '\t'  ; write(io, "\\t")
+        elseif UInt32(c) < 0x20; write(io, "\\u", lpad(string(UInt32(c); base=16), 4, '0'))
+        else              ; write(io, c)
+        end
+    end
+    write(io, '"')
+    return String(take!(io))
 end
 
 """
@@ -681,12 +707,14 @@ function _html_escape(s::AbstractString)
 end
 
 # Convert inline backtick spans and **bold** to HTML; HTML-escape everything else.
+# Unmatched backticks (odd count) fall back to plain HTML-escaped text.
 function _fmt_inline(text::AbstractString)
     parts = split(text, '`')
+    # An even number of parts means an odd number of backticks — no proper pair.
+    iseven(length(parts)) && return _html_escape(text)
     io = IOBuffer()
     for (i, part) in enumerate(parts)
         if isodd(i)
-            # Regular text — escape HTML then handle **bold**
             escaped = _html_escape(part)
             write(io, replace(escaped, r"\*\*([^*]+)\*\*" => s -> "<strong>$(s[3:end-2])</strong>"))
         else
@@ -736,6 +764,7 @@ function _build_html_report(markdown_report::AbstractString, failure_category::S
         end
     end
     in_ul && println(io_body, "</ul>")
+    in_pre && println(io_body, "</pre>")  # close any unterminated fenced code block
 
     banner = failure_category == :none ? "" :
         "<div class=\"failure-banner\"><strong>$(uppercase(string(failure_category)))</strong>: $(_html_escape(String(failure_message)))</div>\n"

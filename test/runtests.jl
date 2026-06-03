@@ -943,4 +943,44 @@ end
     @test fi("`a < b`")           == "<code>a &lt; b</code>"
     # No backticks — identity (modulo escaping)
     @test fi("plain text")        == "plain text"
+    # Odd number of backticks → fallback to plain escaped text (no <code> wrapping)
+    @test !occursin("<code>", fi("one `backtick"))
+    @test  occursin("backtick",  fi("one `backtick"))
+end
+
+@testset "_json_string escaping" begin
+    js = SkeletonizePackage._json_string
+    @test js("hello")          == "\"hello\""
+    @test js("say \"hi\"")     == "\"say \\\"hi\\\"\""
+    @test js("line\nnewline")  == "\"line\\nnewline\""
+    @test js("tab\there")      == "\"tab\\there\""
+    # Control character below 0x20 (e.g. U+0001) must be escaped as 
+    @test js("\x01")           == "\"\\u0001\""
+    @test js("\x0b")           == "\"\\u000b\""   # vertical tab
+    @test js("a\x00b")         == "\"a\\u0000b\""
+    # Backslash
+    @test js("a\\b")           == "\"a\\\\b\""
+end
+
+@testset "grade_submission early validation" begin
+    tmp = mktempdir()
+    reference, submission = _write_grade_fixture!(tmp; submission_name="EarlyVal", passing=true)
+    @test_throws ArgumentError grade_submission(reference, submission; csv_format=:unknown)
+    # Error thrown before any subprocess is started (ArgumentError, not a process error)
+end
+
+@testset "config mode validation" begin
+    tmp = mktempdir()
+    config_path = joinpath(tmp, "bad_mode.inc")
+    write(config_path, """
+---
+[assignment]
+reference_path = "."
+skeleton_path = "../out"
+mode = "sideways"
+---
+config
+assignment
+""")
+    @test_throws ArgumentError SkeletonizePackage.read_assignment_config(config_path)
 end
