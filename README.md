@@ -15,21 +15,27 @@ skeleton to create their submission package.
 
 ## Features 
 
-- Step 0 teacher scaffolding with `create_assignment(...)` or the `init` CLI
-  command.
-- Reference-to-skeleton transformation using `@solution`, `@scaffolding`,
-  `@student_test`, and `@hidden_test`.
-- Generated `STUDENT_INSTRUCTIONS.md`, `RUBRIC.md`, and configurable
-  `AGENTS.md` AI-use policy files.
-- Rubric marks, required/forbidden code properties, and whole-assignment
-  zeroing gates with `zero_marks=true`.
-- Stable rubric IDs, per-criterion grading results, and teacher-facing
-  `GRADING_PLAN.md` / `TEACHER_CHECKLIST.md` files.
-- Hidden reference-oracle tests that compare submissions with the teacher
-  implementation.
-- Student feedback reports and CSV mark rows for class-scale grading.
-- Separate CI checks for package tests, Aqua quality checks, and JET static
-  analysis on Julia 1.12.
+- Start a new assignment from a working teacher scaffold, complete with source
+  files, tests, assignment notes, a README, and a `SkeletonizePackage.inc`
+  configuration file.
+- Write one annotated reference package, then generate the student skeleton from
+  it. Students see scaffolding and public tests; teacher solutions and hidden
+  tests stay private.
+- Generate the useful paperwork automatically: student instructions, a
+  student-facing rubric, an AI-use policy file, a teacher grading plan, and a
+  preparation checklist.
+- Attach marks directly to tests and code requirements, give criteria stable
+  IDs, and turn serious shortcut violations into whole-assignment zero gates
+  when needed.
+- Check more than final answers: require exports, signatures, docstrings,
+  recursion, loops, comments, or line-count limits, and forbid shortcut imports,
+  calls, globals, operators, or side-effect patterns.
+- Compare student functions against the teacher implementation with hidden
+  reference-oracle tests over explicit or generated inputs.
+- Grade submissions into readable Markdown feedback and CSV rows suitable for a
+  class marks spreadsheet.
+- Use either Julia functions or the small command-line workflow for `init`,
+  `validate`, `generate`, and `grade`.
 
 ## Quick start
 

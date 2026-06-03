@@ -1,124 +1,113 @@
-# Feature List
+# What You Can Build
 
-`SkeletonizePackage.jl` supports the full teaching-package lifecycle: creating a
-teacher reference package, generating a student skeleton, and grading a student
-submission against the original reference.
+`SkeletonizePackage.jl` is designed for teachers who want the convenience of a
+single source of truth. You write one annotated reference package: the complete
+solution, the public tests students should see, the hidden checks they should
+not see, and the rubric that explains how the work will be assessed. From that
+one package, `SkeletonizePackage.jl` can create the student version, validate
+the assignment design, and grade submitted packages against the original
+reference.
 
-## Step 0 Scaffolding
+## Start From a Working Assignment
 
-- Create a new teacher reference package with `create_assignment(...)` or the
-  `init` CLI command.
-- Generate a ready-to-edit package containing source files, tests, assignment
-  notes, a README, and a `SkeletonizePackage.inc` configuration file.
-- Include examples of the main annotation and grading features so teachers can
-  edit from a working starting point.
+You do not have to remember the whole annotation system before making your first
+assignment. `create_assignment(...)` and the `init` command create a ready-to-edit
+teacher package with source files, public and hidden tests, assignment notes, a
+README, and a `SkeletonizePackage.inc` configuration file. The scaffold includes
+small examples of the main patterns, so you can replace the sample exercise with
+your own rather than starting from a blank directory.
 
-## Reference to Skeleton Transformation
+## Write the Teacher Version Once
 
-- Transform a teacher reference package into a student skeleton package with
-  `generate_skeleton_package(...)`.
-- Keep scaffolding code and public tests for students.
-- Remove teacher-only solutions and hidden tests from the generated skeleton.
-- Transform Julia source, Markdown, TOML, and INC configuration files.
-- Skip teacher-only directories such as `.git`, `build`, and `solutions`.
+The central idea is simple: keep the teacher's complete version in one place and
+mark which parts belong to students. Put the reference implementation in
+`@solution`, put the starter code in `@scaffolding`, wrap visible tests in
+`@student_test`, and wrap private grading tests in `@hidden_test`. When you
+generate the skeleton, students receive the scaffolding and public tests, while
+solutions and hidden tests stay in the reference package.
 
-## Annotation Language
+The generated skeleton is still an ordinary Julia package. Students can open it
+in their editor, instantiate it, run `Pkg.test()`, and submit it using normal
+Julia workflows. The transformation handles Julia source, Markdown, TOML, and
+INC configuration files, while leaving teacher-only material such as `.git`,
+`build`, and `solutions` out of the student package.
 
-- Use `@solution` for teacher-only reference implementations.
-- Use `@scaffolding` for code shown to students.
-- Use `@student_test` for public tests included in the skeleton.
-- Use `@hidden_test` for private grading tests kept in the reference package.
-- Use `@assignment_requirements` to group broader source and behavioural
-  requirements.
+## Give Students Clear Instructions and a Rubric
 
-## Rubric and Marking
+A generated skeleton can include much more than TODOs. `SkeletonizePackage.jl`
+writes a `STUDENT_INSTRUCTIONS.md` file with package-workflow guidance and any
+exercise-specific notes you provide. It also writes `RUBRIC.md` from the marks
+embedded in your tests and property checks, so students can see what matters
+without seeing hidden test code.
 
-- Attach marks to public or hidden tests with `@marks`.
-- Generate a student-facing `RUBRIC.md` from embedded rubric entries.
-- Assign marks directly to required or forbidden source properties with
-  `marks=N`.
-- Attach stable rubric identifiers with `id="..."` so feedback and grading
-  plans can refer to criteria consistently.
-- Mark serious integrity or shortcut violations with `zero_marks=true`, which
-  makes a failed requirement zero the whole assignment.
-- Summarize marks by criterion, category, and total in grading reports and CSV
-  rows.
+AI-use expectations are documented too. The generated `AGENTS.md` records
+whether AI assistance is `forbidden`, `recorded`, or `allowed`, making that
+policy explicit inside the submitted package rather than buried in a separate
+course page.
 
-## Code Property Checks
+## Turn Tests Into Feedback
 
-- Require source features with `@require`, such as exported functions,
-  signatures, docstrings, recursion, loops, comments, or line-count limits.
-- Forbid source features with `@forbid`, such as imports, calls, operators,
-  globals, or side-effect patterns.
-- Use property checks as public rubric criteria, hidden grading criteria, or
-  assignment-wide requirements.
+Public and hidden tests can carry marks with `@marks`, so the tests do not just
+pass or fail: they become named grading criteria. Stable `id="..."` values let
+the same criterion appear consistently in the student rubric, teacher grading
+plan, feedback reports, and CSV mark rows.
 
-## Reference Oracle Tests
+For behavioural checks, `@reference_test` lets you compare a submitted function
+against the teacher implementation. You can provide explicit inputs or generate
+input cases with `generator=...`. Reference and submission packages are evaluated
+in separate Julia processes, which avoids module-name collisions when both
+packages define the same functions.
 
-- Compare a submitted function against the teacher reference implementation
-  with `@reference_test`.
-- Generate test inputs with `generator=...` or provide explicit input lists.
-- Evaluate reference and submission packages in separate Julia processes to
-  avoid module-name collisions.
+## Check the Shape of Student Code
 
-## Student Skeleton Outputs
+Sometimes the answer matters, and sometimes the way students get there matters
+too. `@assignment_requirements` lets you require or forbid source properties
+with `@require` and `@forbid`. You can check for exported functions, signatures,
+docstrings, recursion, loops, comments, line-count limits, imports, calls,
+operators, globals, and side-effect patterns.
 
-- Generate `STUDENT_INSTRUCTIONS.md` with package workflow guidance and optional
-  exercise-specific notes.
-- Generate `RUBRIC.md` from embedded marks and property requirements.
-- Generate `AGENTS.md` from the configured AI-use policy:
-  `forbidden`, `recorded`, or `allowed`.
-- Preserve the generated skeleton as a normal Julia package that students can
-  open, edit, instantiate, test, and submit.
+These checks can be gentle rubric items or hard gates. Add `marks=N` when a
+property should contribute points, or use `zero_marks=true` for serious shortcut
+or integrity violations that should zero the whole assignment.
 
-## Teacher-Facing Outputs
+## Validate Before You Distribute
 
-- Write `GRADING_PLAN.md` with stable IDs, public and hidden criteria, source
-  locations, points, and zero gates.
-- Write `TEACHER_CHECKLIST.md` with preparation, skeleton inspection, and
-  grading checks.
-- Keep teacher-facing files out of generated student skeletons.
+Before generating a skeleton, `validate_reference_package(...)` can catch common
+assignment-design problems: unsupported annotation forms, missing test
+structure, parsing issues, and other situations that would confuse the
+transformation. Generation can be configured to stop when validation reports an
+error, so mistakes are caught before students receive the package.
 
-## Configuration
+## Keep the Teacher Organised
 
-- Configure generation with `SkeletonizePackage.inc`.
-- Use the INI-style metadata format defined by INCspec and read/written through
-  IncCSV.jl.
-- Configure reference and skeleton paths, generation mode, validation, force
-  behaviour, exercise notes, and AI policy.
+The package also writes teacher-facing material that stays out of the student
+skeleton. `GRADING_PLAN.md` records public and hidden criteria, stable IDs,
+source locations, points, and zero gates. `TEACHER_CHECKLIST.md` gives a compact
+preparation, skeleton-inspection, and grading checklist. Those files are useful
+when an assignment is reused, shared with tutors, or debugged after a semester
+has started.
 
-## Validation and Feedback
+## Grade Submissions at Class Scale
 
-- Validate reference packages before generation with `validate_reference_package`.
-- Detect unsupported annotation forms, missing test structure, parsing problems,
-  and common teaching-design issues.
-- Block skeleton generation on validation errors when validation is enabled.
+After students submit completed packages, use `grade_submission(...)` or the
+`grade` command to run the public, hidden, property, and reference-oracle checks
+against each submission. Grading produces a Markdown feedback report for the
+student and a CSV row that can be appended to a class marks spreadsheet. The
+programmatic result also returns per-criterion `CriterionResult` values, so you
+can build custom reporting or batch workflows on top.
 
-## Quality Checks
+## Use Julia or the Command Line
 
-- Run ordinary package tests on supported Julia versions.
-- Run Aqua quality checks separately from the functional test suite.
-- Run JET static analysis as a separate check on Julia 1.12.x only, while the
-  package itself remains compatible with Julia 1.10.
+Everything can be driven from Julia functions, and the common workflow is also
+available from the command line:
 
-## Grading Outputs
+```bash
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init MyAssignment --ai-policy recorded
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate MyAssignment
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate MyAssignment MyAssignmentSkeleton --force
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade MyAssignment MySubmission --student-id s123 --report s123-feedback.md --csv marks.csv
+```
 
-- Grade student submissions with `grade_submission(...)` or the `grade` CLI
-  command.
-- Produce a Markdown feedback report for students.
-- Produce a CSV header and row suitable for building a class marks spreadsheet.
-- Include public, hidden, property, reference-test, and total marks in grading
-  summaries.
-- Return per-criterion `CriterionResult` values from `grade_submission`.
-
-## Planned Work
-
-- See `TODO.md` for the intentionally deferred syntax-aware property-checking
-  work and batch submission grading plan.
-
-## Command-Line Workflow
-
-- `init`: create the step 0 teacher scaffold.
-- `validate`: check the teacher reference package.
-- `generate`: create the student skeleton package.
-- `grade`: grade a student submission and write feedback/marks outputs.
+The repository's own checks are split into ordinary package tests, Aqua quality
+checks, and JET static analysis, so failures are easier to interpret when
+maintaining the package itself.

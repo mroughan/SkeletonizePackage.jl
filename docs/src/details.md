@@ -61,16 +61,6 @@ controls the generated `AGENTS.md` file in the student skeleton. This file is
 not a technical security mechanism; it is an explicit instruction and audit
 record that makes the teacher's AI-use rule unambiguous.
 
-## Test and CI Layout
-
-The ordinary package tests live in `test/runtests.jl` and are intended to run on
-all supported Julia versions, including Julia 1.10.
-
-Aqua checks live in `test/aqua.jl` and run as a separate quality job in a
-temporary Julia environment. JET checks live in `test/jet.jl` and are
-intentionally restricted to Julia 1.12.x. This keeps the package compatible with
-Julia 1.10 while still checking newer static analysis tooling in CI.
-
 ## Rubric Generation
 
 Use `@marks POINTS "description"` inside `@student_test` or `@hidden_test`
