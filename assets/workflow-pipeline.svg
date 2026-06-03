@@ -1,52 +1,140 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="260" viewBox="0 0 1120 260" role="img" aria-labelledby="title desc">
-  <title id="title">SkeletonizePackage.jl workflow pipeline with setup step</title>
-  <desc id="desc">A teacher starts with a scaffolded assignment setup, edits a reference package, generates a student skeleton, receives a student submission, and grades it to produce feedback.</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f4858"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   width="1280"
+   height="360"
+   viewBox="0 0 1280 360"
+   version="1.1"
+   id="workflow-pipeline-svg"
+   role="img"
+   aria-labelledby="workflow-pipeline-title workflow-pipeline-desc"
+   sodipodi:docname="workflow-pipeline.svg"
+   inkscape:version="1.3">
+  <title id="workflow-pipeline-title">SkeletonizePackage.jl full workflow pipeline</title>
+  <desc id="workflow-pipeline-desc">Full pipeline from teacher setup, to reference package, validation, skeleton package, student submission, grading, and reporting.</desc>
+  <metadata id="metadata-workflow-pipeline">
+    <rdf:RDF>
+      <cc:Work rdf:about="">
+        <dc:title>SkeletonizePackage.jl full workflow pipeline</dc:title>
+        <dc:format>image/svg+xml</dc:format>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     id="namedview-workflow-pipeline"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:document-units="px"
+     showgrid="false" />
+  <defs id="defs-workflow-pipeline">
+    <marker id="workflow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f4858" id="workflow-arrow-path" />
     </marker>
-    <filter id="shadow" x="-10%" y="-20%" width="120%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1f2933" flood-opacity="0.16"/>
-    </filter>
   </defs>
-  <rect width="1120" height="260" rx="0" fill="#f7fafc"/>
-  <g font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
-    <g filter="url(#shadow)">
-      <rect x="28" y="76" width="176" height="96" rx="8" fill="#ffffff" stroke="#607d8b" stroke-width="2"/>
-      <rect x="254" y="76" width="176" height="96" rx="8" fill="#ffffff" stroke="#5b8def" stroke-width="2"/>
-      <rect x="480" y="76" width="176" height="96" rx="8" fill="#ffffff" stroke="#49a078" stroke-width="2"/>
-      <rect x="706" y="76" width="176" height="96" rx="8" fill="#ffffff" stroke="#f2a65a" stroke-width="2"/>
-      <rect x="932" y="76" width="160" height="96" rx="8" fill="#ffffff" stroke="#8357c5" stroke-width="2"/>
+  <rect id="workflow-background" width="1280" height="360" fill="#f7fafc" />
+  <g id="workflow-content" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+    <text id="workflow-heading" x="640" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#17212b">SkeletonizePackage.jl Pipeline</text>
+    <text id="workflow-subheading" x="640" y="68" text-anchor="middle" font-size="14" fill="#465866">teacher reference package to student skeleton to submission grading and reports</text>
+
+    <g id="workflow-card-shadows" opacity="0.12">
+      <rect x="28" y="112" width="150" height="112" rx="8" fill="#1f2933" />
+      <rect x="208" y="112" width="150" height="112" rx="8" fill="#1f2933" />
+      <rect x="388" y="112" width="150" height="112" rx="8" fill="#1f2933" />
+      <rect x="568" y="112" width="150" height="112" rx="8" fill="#1f2933" />
+      <rect x="748" y="112" width="150" height="112" rx="8" fill="#1f2933" />
+      <rect x="928" y="112" width="150" height="112" rx="8" fill="#1f2933" />
+      <rect x="1108" y="112" width="150" height="112" rx="8" fill="#1f2933" />
     </g>
-    <text x="116" y="109" text-anchor="middle" font-size="15" font-weight="700" fill="#607d8b">Step 0</text>
-    <text x="116" y="132" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Setup</text>
-    <text x="116" y="154" text-anchor="middle" font-size="13" fill="#465866">teacher scaffold</text>
+    <g id="workflow-cards">
+      <rect id="step-0-card" x="24" y="108" width="150" height="112" rx="8" fill="#ffffff" stroke="#607d8b" stroke-width="2" />
+      <rect id="step-1-card" x="204" y="108" width="150" height="112" rx="8" fill="#ffffff" stroke="#5b8def" stroke-width="2" />
+      <rect id="step-2-card" x="384" y="108" width="150" height="112" rx="8" fill="#ffffff" stroke="#4f6f7a" stroke-width="2" />
+      <rect id="step-3-card" x="564" y="108" width="150" height="112" rx="8" fill="#ffffff" stroke="#49a078" stroke-width="2" />
+      <rect id="step-4-card" x="744" y="108" width="150" height="112" rx="8" fill="#ffffff" stroke="#f2a65a" stroke-width="2" />
+      <rect id="step-5-card" x="924" y="108" width="150" height="112" rx="8" fill="#ffffff" stroke="#8357c5" stroke-width="2" />
+      <rect id="step-6-card" x="1104" y="108" width="150" height="112" rx="8" fill="#ffffff" stroke="#2d7f7b" stroke-width="2" />
+    </g>
 
-    <text x="342" y="109" text-anchor="middle" font-size="20" font-weight="700" fill="#17212b">X.jl</text>
-    <text x="342" y="135" text-anchor="middle" font-size="14" fill="#465866">teacher reference</text>
-    <text x="342" y="154" text-anchor="middle" font-size="12" fill="#6b7c88">solutions and hidden tests</text>
+    <g id="step-0-text">
+      <text x="99" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#607d8b">Step 0</text>
+      <text x="99" y="160" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Setup</text>
+      <text x="99" y="181" text-anchor="middle" font-size="12" fill="#465866">create_assignment</text>
+      <text x="99" y="199" text-anchor="middle" font-size="12" fill="#6b7c88">config and examples</text>
+    </g>
+    <g id="step-1-text">
+      <text x="279" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#5b8def">Step 1</text>
+      <text x="279" y="160" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Reference</text>
+      <text x="279" y="181" text-anchor="middle" font-size="12" fill="#465866">teacher package</text>
+      <text x="279" y="199" text-anchor="middle" font-size="12" fill="#6b7c88">solutions and tests</text>
+    </g>
+    <g id="step-2-text">
+      <text x="459" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#4f6f7a">Step 2</text>
+      <text x="459" y="160" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Validate</text>
+      <text x="459" y="181" text-anchor="middle" font-size="12" fill="#465866">syntax and blocks</text>
+      <text x="459" y="199" text-anchor="middle" font-size="12" fill="#6b7c88">design warnings</text>
+    </g>
+    <g id="step-3-text">
+      <text x="639" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#49a078">Step 3</text>
+      <text x="639" y="160" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Skeleton</text>
+      <text x="639" y="181" text-anchor="middle" font-size="12" fill="#465866">student package</text>
+      <text x="639" y="199" text-anchor="middle" font-size="12" fill="#6b7c88">RUBRIC + AGENTS</text>
+    </g>
+    <g id="step-4-text">
+      <text x="819" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#c57b28">Step 4</text>
+      <text x="819" y="160" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Submission</text>
+      <text x="819" y="181" text-anchor="middle" font-size="12" fill="#465866">student completes</text>
+      <text x="819" y="199" text-anchor="middle" font-size="12" fill="#6b7c88">same assignment API</text>
+    </g>
+    <g id="step-5-text">
+      <text x="999" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#8357c5">Step 5</text>
+      <text x="999" y="160" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Grade</text>
+      <text x="999" y="181" text-anchor="middle" font-size="12" fill="#465866">public + hidden</text>
+      <text x="999" y="199" text-anchor="middle" font-size="12" fill="#6b7c88">reference checks</text>
+    </g>
+    <g id="step-6-text">
+      <text x="1179" y="137" text-anchor="middle" font-size="14" font-weight="700" fill="#2d7f7b">Step 6</text>
+      <text x="1179" y="160" text-anchor="middle" font-size="18" font-weight="700" fill="#17212b">Reports</text>
+      <text x="1179" y="181" text-anchor="middle" font-size="12" fill="#465866">feedback markdown</text>
+      <text x="1179" y="199" text-anchor="middle" font-size="12" fill="#6b7c88">marks CSV row</text>
+    </g>
 
-    <text x="568" y="109" text-anchor="middle" font-size="20" font-weight="700" fill="#17212b">Y.jl</text>
-    <text x="568" y="135" text-anchor="middle" font-size="14" fill="#465866">student skeleton</text>
-    <text x="568" y="154" text-anchor="middle" font-size="12" fill="#6b7c88">RUBRIC.md + AGENTS.md</text>
+    <path id="arrow-0-1" d="M 184 164 H 194" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
+    <path id="arrow-1-2" d="M 364 164 H 374" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
+    <path id="arrow-2-3" d="M 544 164 H 554" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
+    <path id="arrow-3-4" d="M 724 164 H 734" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
+    <path id="arrow-4-5" d="M 904 164 H 914" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
+    <path id="arrow-5-6" d="M 1084 164 H 1094" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#workflow-arrow)" />
 
-    <text x="794" y="109" text-anchor="middle" font-size="20" font-weight="700" fill="#17212b">Z.jl</text>
-    <text x="794" y="135" text-anchor="middle" font-size="14" fill="#465866">student submission</text>
+    <text id="flow-0-1" x="189" y="100" text-anchor="middle" font-size="11" fill="#2f4858">edit</text>
+    <text id="flow-1-2" x="369" y="100" text-anchor="middle" font-size="11" fill="#2f4858">check</text>
+    <text id="flow-2-3" x="549" y="100" text-anchor="middle" font-size="11" fill="#2f4858">transform</text>
+    <text id="flow-3-4" x="729" y="100" text-anchor="middle" font-size="11" fill="#2f4858">complete</text>
+    <text id="flow-4-5" x="909" y="100" text-anchor="middle" font-size="11" fill="#2f4858">assess</text>
+    <text id="flow-5-6" x="1089" y="100" text-anchor="middle" font-size="11" fill="#2f4858">summarise</text>
 
-    <text x="1012" y="109" text-anchor="middle" font-size="20" font-weight="700" fill="#17212b">Report</text>
-    <text x="1012" y="135" text-anchor="middle" font-size="14" fill="#465866">feedback and grade</text>
-
-    <path d="M 214 124 H 244" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-    <path d="M 440 124 H 470" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-    <path d="M 666 124 H 696" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-    <path d="M 892 124 H 922" stroke="#2f4858" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-
-    <text x="229" y="88" text-anchor="middle" font-size="12" fill="#2f4858">teacher edits</text>
-    <text x="455" y="88" text-anchor="middle" font-size="12" fill="#2f4858">generate_skeleton_package(...)</text>
-    <text x="681" y="88" text-anchor="middle" font-size="12" fill="#2f4858">student completes</text>
-    <text x="907" y="88" text-anchor="middle" font-size="12" fill="#2f4858">grade_submission(...)</text>
-
-    <text x="116" y="207" text-anchor="middle" font-size="13" fill="#2f4858">create_assignment(...)</text>
-    <text x="116" y="226" text-anchor="middle" font-size="12" fill="#6b7c88">examples, config, notes</text>
+    <g id="workflow-output-shadows" opacity="0.10">
+      <rect x="212" y="256" width="326" height="54" rx="8" fill="#1f2933" />
+      <rect x="570" y="256" width="326" height="54" rx="8" fill="#1f2933" />
+      <rect x="928" y="256" width="326" height="54" rx="8" fill="#1f2933" />
+    </g>
+    <g id="workflow-outputs">
+      <rect id="teacher-artifacts-box" x="208" y="252" width="326" height="54" rx="8" fill="#eef4ff" stroke="#5b8def" stroke-width="1.5" />
+      <text x="371" y="275" text-anchor="middle" font-size="13" font-weight="700" fill="#17212b">reference artifacts</text>
+      <text x="371" y="295" text-anchor="middle" font-size="12" fill="#465866">@solution, @hidden_test, requirements, INC config</text>
+      <rect id="student-artifacts-box" x="566" y="252" width="326" height="54" rx="8" fill="#eaf8f0" stroke="#49a078" stroke-width="1.5" />
+      <text x="729" y="275" text-anchor="middle" font-size="13" font-weight="700" fill="#17212b">student artifacts</text>
+      <text x="729" y="295" text-anchor="middle" font-size="12" fill="#465866">@scaffolding, public tests, RUBRIC.md, AGENTS.md</text>
+      <rect id="grading-artifacts-box" x="924" y="252" width="326" height="54" rx="8" fill="#f3edff" stroke="#8357c5" stroke-width="1.5" />
+      <text x="1087" y="275" text-anchor="middle" font-size="13" font-weight="700" fill="#17212b">grading artifacts</text>
+      <text x="1087" y="295" text-anchor="middle" font-size="12" fill="#465866">student feedback report and category marks CSV</text>
+    </g>
   </g>
 </svg>

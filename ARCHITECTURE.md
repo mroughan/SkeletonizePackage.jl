@@ -1,104 +1,216 @@
-This metapackage operates on another Julia package. It should allow a lecturer to
-write a package, called `X.jl` here, and include annotations such as `@solution`
-and `@hidden_test` that identify parts of the package that should be hidden from
-students.
+# Architecture
 
-`SkeletonizePackage.jl` should take `X.jl` and create `Y.jl`, a functional scaffolding
-package with the hidden components removed or replaced. The scaffolding can include
-partial functions, partial tests, partial documentation, and other scaffolding
-that helps students without handing them the solution.
+`SkeletonizePackage.jl` operates on Julia packages used for teaching. The core
+idea is that a teacher writes a complete reference package and annotates which
+parts are for students, which parts are teacher-only, and which parts describe
+the rubric. The tool then creates a student skeleton package and later grades a
+student submission package against the reference, rubric, public tests, hidden
+tests, and declared requirements.
 
-A student then takes `Y.jl` and tries to recreate the intended behaviour of
-`X.jl`; call the submitted package `Z.jl`. The teacher would like to automate
-testing that `Z.jl` implements the required interface and behaviour. That may
-include comparing a set of tests provided to the student with a set of tests that
-were hidden from the student, along with other checks that `X.jl` and `Z.jl` are
-functionally equivalent.
+The names used throughout the package are deliberately explicit:
 
-## Workflow 
+- **Reference package**: the teacher-owned package containing complete solutions,
+  hidden tests, public tests, requirements, and rubric metadata.
+- **Skeleton package**: the generated student-facing package. It contains
+  scaffolding code, public tests, student instructions, rubric information, and
+  the configured `AGENTS.md` policy.
+- **Submission package**: the student's completed package, derived from the
+  skeleton.
 
+The skeleton should be its own rubric. A student should be able to read the
+skeleton package, visible tests, requirements, and rubric files and understand
+how their work will be assessed, even though some grading tests may remain
+hidden.
+
+## Pipeline
+
+```text
+Step 0: create assignment setup
+    create_assignment(...) or the init CLI command
+        |
+        v
+Step 1: edit the teacher reference package
+    reference source + tests + docs + SkeletonizePackage.inc
+        |
+        v
+Step 2: validate the reference package
+    annotation checks + syntax checks + skeleton-design warnings
+        |
+        v
+Step 3: generate the student skeleton package
+    remove teacher-only code, keep scaffolding and public material
+        |
+        v
+Step 4: student completes the skeleton
+    skeleton package -> submission package
+        |
+        v
+Step 5: grade the submission
+    public tests + hidden tests + reference tests + requirements
+        |
+        v
+Step 6: write reports
+    student feedback report + one-row CSV marks summary
 ```
-X.jl  --teacher solution package
-  |
-  |  strip / transform / reveal selected parts
-  v
-Y.jl  --student skeleton
-  |
-  |  student completes it
-  v
-Z.jl  --student submission package
 
-Then compare:
-    X.jl ≈ Z.jl
-using public tests + hidden tests + behavioural checks.
+At the package level, the same flow can be read as:
+
+```text
+teacher setup
+    |
+    v
+REFERENCE package
+    |
+    |  validate_reference_package(...)
+    |  generate_skeleton_package(...)
+    v
+SKELETON package
+    |
+    |  student edits and submits
+    v
+SUBMISSION package
+    |
+    |  grade_submission(...)
+    v
+student feedback report + marks CSV row
 ```
 
-## Annotations
+## Step 0 Setup
 
+`create_assignment(...)` creates a basic teacher workspace. The generated
+workspace is intentionally small but complete enough to edit:
+
+- a Julia package with example source and test files,
+- a `SkeletonizePackage.inc` configuration file using the INCspec INI-style
+  metadata format read and written through `IncCSV.jl`,
+- initial documentation for students and teachers,
+- examples of `@solution`, `@scaffolding`, `@student_test`, `@hidden_test`,
+  `@marks`, requirements, and reference tests,
+- a teacher checklist and grading plan.
+
+This step is a convenience layer. Teachers may also create the reference package
+manually, provided the same annotations and configuration conventions are used.
+
+## Reference Package
+
+The reference package is the teacher's source of truth. It should compile and
+pass its own tests before a skeleton is generated. It contains ordinary Julia
+code plus a small annotation language.
+
+```julia
+@solution begin
+    # teacher-only implementation
+end
+
+@scaffolding begin
+    # student-facing placeholder or partial implementation
+end
+
+@student_test begin
+    # visible public tests
+end
+
+@hidden_test begin
+    # teacher-only grading tests
+end
 ```
-@solution      # teacher-only implementation
-@scaffolding       # replacement shown to students
-@hidden_test   # tests used for grading but not shown
-@student_test  # tests included in Y.jl
+
+Rubric metadata and code properties can be declared beside tests or inside an
+assignment requirements block:
+
+```julia
+@marks 2 "handles empty inputs" id="empty-inputs" category="correctness"
+
+@assignment_requirements begin
+    @require exported(:mysort) marks=1 category="interface"
+    @forbid imports(:SortingAlgorithms) zero_marks=true
+    @reference_test mysort generator=[[3, 2, 1], Int[]] marks=3
+end
 ```
 
-Possible future annotations include `@hint` for student-facing feedback and
-`@rubric` for grading metadata. The implementation should add these only when
-there is a clear transformation and reporting story for them.
+The `zero_marks=true` keyword is reserved for fatal policy failures. For
+example, using a forbidden package that bypasses the point of the assignment can
+make all other marks irrelevant.
 
-## Constraints
+## Validation
 
-1. The package should not try to be a full Julia parser/reformatter. Instead, it should define a small annotation language that is easy to recognise and transform.
-2. Avoid making @hidden merely deleting code, because deleting code may leave broken syntax. 
-3. Don't try to test if X.jl and Z.jl (the students solution) are exactly the same.
+`validate_reference_package(...)` checks the reference package before generation.
+The validator is intentionally conservative and text-oriented rather than a full
+Julia reformatter. It checks for:
 
-## Checks
+- supported annotation names,
+- balanced block-style annotations,
+- generated Julia syntax after annotation stripping,
+- missing public or hidden tests,
+- solution blocks without nearby scaffolding where a prompt would be expected,
+- scaffolding blocks without an obvious TODO, placeholder, or partial
+  implementation.
 
-Automated assessment of student work against the required work is
-included here.
+Validation produces structured issues so the CLI and documentation can show
+teacher-facing warnings without blocking generation unnecessarily.
 
-In general such assessment should be
-  + transparent to students (they know what is tested)
-  + pedagogically meaningful
-  + technically implementable 
-  + hard to game
-  + provide feedback about problems
+## Skeleton Generation
 
-There are two parts of assessment
+`generate_skeleton_package(...)` transforms the reference package into the
+student skeleton package.
 
-  1. Specific value tests (as in standard unit testing, though using
-     AnnotatedTests.jl rather than Test for more feedback). Some of
-     these can be student visible, and some hidden. Some of these
-     tests may use tests against the reference function.
+For student-mode output:
 
-  2. Behavioural/property testing of the code, eg testing if a
-     function is recursive, or its API complies with a
-     specification. It is expected that the specified requirements
-     will be visible to students, if not the outcomes of testing of
-     these requirements.
+- `@solution` bodies are removed,
+- `@scaffolding` bodies are kept,
+- `@student_test` bodies are kept,
+- `@hidden_test` bodies are removed,
+- rubric metadata is extracted into `RUBRIC.md`,
+- student instructions and configured supporting documents are copied,
+- `AGENTS.md` is generated from the configured AI-use policy.
 
-The rubric for the testing IS the skeleton provided to the student.
+The `AGENTS.md` policy has three modes:
 
-## Notes
+- `forbidden`: AI agents are explicitly forbidden.
+- `recorded`: AI agent use is allowed only with a record of actions.
+- `allowed`: AI agent use is allowed under the teacher's policy text.
 
-We are also building a separate package called AnnotatedTests to allow
-more meaningful feedback from tests, but for the moment restrict
-testing to the stdlib Test. 
+The document cannot prevent misuse by itself, but it makes the permitted policy
+explicit in the distributed skeleton.
 
-## Current implementation path
+## Submission And Grading
 
-1. Read Julia source files from X.jl as text.
-2. Validate annotated regions and report both transformation errors and
-   skeleton-design warnings. For Julia files, parse the source before and after
-   annotation removal to catch broken generated code early.
-3. Transform/remove/replace annotated syntax.
-4. Write a new package directory for Y.jl, without replacing an existing
-   destination unless `force=true`.
-5. Run tests of Z.jl in isolated Julia processes and return structured results.
+A student completes the skeleton package and submits it as the submission
+package. Grading compares the submission against the assignment contract, not
+against a byte-for-byte copy of the reference implementation.
 
-Use an INC file to configure the overall package/example. The configuration
-lives in the INI-style metadata block defined by INCspec and read/written by
-IncCSV.jl, eg,
+`grade_submission(...)` can run:
+
+- public tests that students saw,
+- hidden tests retained by the teacher,
+- reference tests that compare submission outputs with fully qualified reference
+  functions,
+- simple requirement checks from `@require` and `@forbid`,
+- rubric-linked marks with categories and totals,
+- fatal `zero_marks=true` checks.
+
+Reference tests are useful when the teacher wants hidden tests to ask "does the
+student implementation behave like the reference implementation for this input?"
+without exposing the reference implementation in the skeleton.
+
+## Reports
+
+Grading produces two complementary outputs:
+
+- a student feedback report, usually Markdown, explaining which criteria were
+  tested, what passed or failed, and how the result relates to the rubric;
+- a compact marks CSV row suitable for concatenating across many students, with
+  category totals and an assignment total.
+
+The report is pedagogical. The CSV row is administrative.
+
+## Configuration
+
+Configuration files use the INI-style metadata block defined by
+[`mroughan/INCspec`](https://github.com/mroughan/INCspec) and the reader/writer
+library in [`mroughan/IncCSV.jl`](https://github.com/mroughan/IncCSV.jl).
+
+Example:
 
 ```text
 ---
@@ -118,7 +230,36 @@ default = "student"
 public_tests = true
 hidden_tests = true
 reference_tests = true
+
+[agents]
+policy = "recorded"
 ---
 config
 assignment
 ```
+
+## Design Constraints
+
+1. The package should use a small, readable annotation language rather than
+   trying to become a complete Julia parser or formatter.
+2. Hidden code should be removed by transforming block annotations, not by
+   deleting arbitrary line ranges that may leave broken syntax.
+3. Generated skeleton packages should remain ordinary Julia packages that
+   students can read, test, and edit without special tooling.
+4. Hidden tests and reference tests should assess behaviour and interface
+   contracts, not require the submission to be textually identical to the
+   reference implementation.
+5. The visible skeleton, `RUBRIC.md`, requirements, and public tests should make
+   the grading contract clear.
+
+## Current Components
+
+- `annotations.jl`: annotation macros and source transformation.
+- `config.jl`: INCspec/IncCSV-backed assignment configuration.
+- `generation.jl`: reference-to-skeleton package generation.
+- `grading.jl`: test execution, rubric scoring, feedback reports, and CSV rows.
+- `properties.jl`: simple `@require` and `@forbid` property checks.
+- `rubric.jl`: rubric extraction and rendering.
+- `templates.jl`: Step 0 assignment setup templates.
+- `validation.jl`: reference package validation.
+- `cli.jl`: command-line entry points.
