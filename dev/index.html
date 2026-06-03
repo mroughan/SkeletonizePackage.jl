@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Intro · SkeletonizePackage.jl</title><meta name="title" content="Intro · SkeletonizePackage.jl"/><meta property="og:title" content="Intro · SkeletonizePackage.jl"/><meta property="twitter:title" content="Intro · SkeletonizePackage.jl"/><meta name="description" content="Documentation for SkeletonizePackage.jl."/><meta property="og:description" content="Documentation for SkeletonizePackage.jl."/><meta property="twitter:description" content="Documentation for SkeletonizePackage.jl."/><meta property="og:url" content="https://mroughan.github.io/SkeletonizePackage.jl/"/><meta property="twitter:url" content="https://mroughan.github.io/SkeletonizePackage.jl/"/><link rel="canonical" href="https://mroughan.github.io/SkeletonizePackage.jl/"/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>SkeletonizePackage.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Intro</a><ul class="internal"><li><a class="tocitem" href="#Quick-Start"><span>Quick Start</span></a></li><li><a class="tocitem" href="#Example-1-Very-Thin-Example"><span>Example 1 - Very Thin Example</span></a></li><li><a class="tocitem" href="#Example-2-Public-and-Hidden-Tests"><span>Example 2 - Public and Hidden Tests</span></a></li><li><a class="tocitem" href="#Example-3-Configuration-Options"><span>Example 3 - Configuration Options</span></a></li><li><a class="tocitem" href="#Example-4-Reference-Oracle-Tests"><span>Example 4 - Reference Oracle Tests</span></a></li><li><a class="tocitem" href="#Example-5-Structural-and-Shortcut-Policies"><span>Example 5 - Structural and Shortcut Policies</span></a></li></ul></li><li><a class="tocitem" href="features/">Features</a></li><li><a class="tocitem" href="pipeline/">Pipeline</a></li><li><a class="tocitem" href="details/">Additional Details</a></li><li><a class="tocitem" href="requirements/">Requirements</a></li><li><a class="tocitem" href="api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Intro</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Intro</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/mroughan/SkeletonizePackage.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="SkeletonizePackage.jl"><a class="docs-heading-anchor" href="#SkeletonizePackage.jl">SkeletonizePackage.jl</a><a id="SkeletonizePackage.jl-1"></a><a class="docs-heading-anchor-permalink" href="#SkeletonizePackage.jl" title="Permalink"></a></h1><p><code>SkeletonizePackage.jl</code> transforms an annotated teacher reference package into a student skeleton package. Students complete the skeleton to create their submission package.</p><p>The package is intentionally conservative: it uses a small annotation language, keeps generated packages as ordinary Julia packages, and validates reference packages before generation so syntax and teaching-design problems are caught early.</p><h2 id="Quick-Start"><a class="docs-heading-anchor" href="#Quick-Start">Quick Start</a><a id="Quick-Start-1"></a><a class="docs-heading-anchor-permalink" href="#Quick-Start" title="Permalink"></a></h2><p>Start by scaffolding a teacher reference package:</p><pre><code class="language-julia hljs">using SkeletonizePackage
+
+create_assignment(&quot;MyAssignment&quot;; ai_policy=:recorded)</code></pre><p>The scaffold is step 0 of the pipeline. It creates a normal Julia package with example annotations, public and hidden tests, rubric entries, source-property requirements, a reference-oracle test, exercise notes, and a <code>SkeletonizePackage.inc</code> file. Teachers then edit those files into the real assignment.</p><p>The reference package contains annotations such as:</p><pre><code class="language-julia hljs">function mysort(xs)
+    @solution begin
+        return sort(xs)
+    end
+    @scaffolding begin
+        error(&quot;TODO: implement mysort&quot;)
+    end
+end</code></pre><p>Validate it, generate a skeleton, let the student work from that skeleton, and grade the resulting submission:</p><pre><code class="language-julia hljs">using SkeletonizePackage
+
+create_assignment(&quot;MyAssignment&quot;; ai_policy=:recorded)
+
+report = validate_reference_package(&quot;examples/SortingAssignment&quot;; io=stdout)
+isvalid(report)
+
+skeleton = generate_skeleton_package(
+    &quot;examples/SortingAssignment&quot;,
+    &quot;SortingAssignmentStudent&quot;;
+    force=true,
+)
+
+# After distribution, the student edits the skeleton and submits a completed copy.
+result = grade_submission(
+    &quot;examples/SortingAssignment&quot;,
+    &quot;SortingAssignmentSubmission&quot;;
+    student_id=&quot;s123&quot;,
+    report_path=&quot;s123-feedback.md&quot;,
+    csv_path=&quot;marks.csv&quot;,
+)</code></pre><p>Skeleton packages keep <code>@scaffolding</code> and <code>@student_test</code> bodies. Reference packages keep <code>@solution</code>, <code>@student_test</code>, and <code>@hidden_test</code> bodies. Generated skeleton packages also include <code>STUDENT_INSTRUCTIONS.md</code>, a generic guide for students who are new to Julia package workflows, and <code>RUBRIC.md</code>, the student-facing grading contract. They also include <code>AGENTS.md</code>, generated from the configured AI-use policy. Grading writes a Markdown feedback report for the student and a CSV row that can be appended to a class marks file.</p><h2 id="Example-1-Very-Thin-Example"><a class="docs-heading-anchor" href="#Example-1-Very-Thin-Example">Example 1 - Very Thin Example</a><a id="Example-1-Very-Thin-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Example-1-Very-Thin-Example" title="Permalink"></a></h2><p><code>examples/ThinAssignment</code> shows the smallest useful pattern: one exported function, one reference solution, one scaffolding placeholder, one public test, and one hidden test. Tests can also carry <code>@marks</code> lines that become the generated skeleton <code>RUBRIC.md</code>.</p><pre><code class="language-julia hljs">function double_it(x)
+    @solution begin
+        return 2x
+    end
+    @scaffolding begin
+        error(&quot;TODO: implement double_it&quot;)
+    end
+end</code></pre><p>This is a good starting point when introducing the annotation model without configuration or richer testing concerns.</p><p>Run the complete thin pipeline from the repository root:</p><pre><code class="language-julia hljs">using SkeletonizePackage
+
+reference = &quot;examples/ThinAssignment&quot;
+skeleton = &quot;ThinAssignmentSkeleton&quot;
+submission = &quot;ThinAssignmentSubmission&quot;
+
+validate_reference_package(reference; io=stdout)
+generate_skeleton_package(reference, skeleton; force=true)
+
+# In a real class, the student receives `skeleton`, edits it, and submits a copy.
+# For local experimentation, copy the skeleton and replace the TODO by hand.
+result = grade_submission(reference, submission; student_id=&quot;thin-demo&quot;)
+result.student_report
+result.csv_row</code></pre><p>The reference package remains the teacher&#39;s canonical version, the skeleton is what students see, and the submission is the student&#39;s completed package.</p><h2 id="Example-2-Public-and-Hidden-Tests"><a class="docs-heading-anchor" href="#Example-2-Public-and-Hidden-Tests">Example 2 - Public and Hidden Tests</a><a id="Example-2-Public-and-Hidden-Tests-1"></a><a class="docs-heading-anchor-permalink" href="#Example-2-Public-and-Hidden-Tests" title="Permalink"></a></h2><p><code>examples/SortingAssignment</code> demonstrates the common assignment pattern: students receive a skeleton implementation and public tests, while hidden tests remain in the reference package for grading.</p><pre><code class="language-julia hljs">@student_test begin
+    @marks 1 &quot;sorts a simple two-element vector&quot;
+    @test mysort([2, 1]) == [1, 2]
+end
+
+@hidden_test begin
+    @marks 1 &quot;handles empty vectors&quot;
+    @test mysort(Int[]) == Int[]
+end</code></pre><p>A typical teacher workflow is:</p><pre><code class="language-bash hljs">julia --project -e &#39;using SkeletonizePackage; exit(SkeletonizePackage.main())&#39; -- validate examples/SortingAssignment
+julia --project -e &#39;using SkeletonizePackage; exit(SkeletonizePackage.main())&#39; -- generate examples/SortingAssignment SortingAssignmentSkeleton --force</code></pre><p>Students work in <code>SortingAssignmentSkeleton</code>, run their public tests with:</p><pre><code class="language-bash hljs">julia --project=. -e &#39;using Pkg; Pkg.test()&#39;</code></pre><p>After they submit a completed package, the teacher can grade it:</p><pre><code class="language-bash hljs">julia --project -e &#39;using SkeletonizePackage; exit(SkeletonizePackage.main())&#39; -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv</code></pre><p>The grading step produces <code>s123-feedback.md</code> for the student and appends a row to <code>marks.csv</code> for the class marks spreadsheet.</p><h2 id="Example-3-Configuration-Options"><a class="docs-heading-anchor" href="#Example-3-Configuration-Options">Example 3 - Configuration Options</a><a id="Example-3-Configuration-Options-1"></a><a class="docs-heading-anchor-permalink" href="#Example-3-Configuration-Options" title="Permalink"></a></h2><p><code>examples/ConfiguredAssignment</code> includes a <code>SkeletonizePackage.inc</code> file. The configuration lives in the INC metadata block, using the INI-style metadata syntax defined by INCspec and read/written by IncCSV.jl.</p><pre><code class="language-text hljs">---
+[assignment]
+reference_path = &quot;.&quot;
+skeleton_path = &quot;../ConfiguredAssignmentStudent&quot;
+mode = &quot;student&quot;
+force = false
+validate = true
+instructions_path = &quot;student_notes.md&quot;
+ai_policy = &quot;recorded&quot;
+---
+config
+assignment</code></pre><p>Generate from the config file with:</p><pre><code class="language-julia hljs">using SkeletonizePackage
+
+config = read_assignment_config(&quot;examples/ConfiguredAssignment/SkeletonizePackage.inc&quot;)
+generate_skeleton_package(config; io=stdout)</code></pre><p><code>instructions_path</code> points to exercise-specific Markdown that is transformed in student mode before being appended to <code>STUDENT_INSTRUCTIONS.md</code>. <code>ai_policy</code> can be <code>forbidden</code>, <code>recorded</code>, or <code>allowed</code>; it controls the generated <code>AGENTS.md</code> file in the student skeleton.</p><p>The generated configured skeleton contains:</p><pre><code class="language-text hljs">ConfiguredAssignmentStudent/
+  Project.toml
+  STUDENT_INSTRUCTIONS.md
+  AGENTS.md
+  RUBRIC.md
+  src/
+  test/</code></pre><p>The same reference package can then be used to grade each submitted copy:</p><pre><code class="language-julia hljs">grade_submission(
+    config.reference_path,
+    &quot;ConfiguredAssignmentSubmission&quot;;
+    student_id=&quot;configured-demo&quot;,
+    report_path=&quot;configured-feedback.md&quot;,
+    csv_path=&quot;configured-marks.csv&quot;,
+)</code></pre><h2 id="Example-4-Reference-Oracle-Tests"><a class="docs-heading-anchor" href="#Example-4-Reference-Oracle-Tests">Example 4 - Reference Oracle Tests</a><a id="Example-4-Reference-Oracle-Tests-1"></a><a class="docs-heading-anchor-permalink" href="#Example-4-Reference-Oracle-Tests" title="Permalink"></a></h2><p><code>examples/ReferenceOracleAssignment</code> demonstrates hidden tests that compare the student submission directly with the teacher&#39;s reference implementation.</p><pre><code class="language-julia hljs">@hidden_test begin
+    @marks 3 &quot;matches the reference implementation on generated inputs&quot;
+    @reference_test clamp01 generator=[-2, -0.5, 0, 0.25, 1, 2]
+end</code></pre><p>During grading, <code>grade_submission</code> evaluates <code>clamp01</code> on the reference package and on the submitted package in separate Julia processes, then compares the outputs. A passing report contains entries like:</p><pre><code class="language-text hljs">## Reference Tests
+
+- [hidden] `clamp01` input 1 passed: matched reference output</code></pre><h2 id="Example-5-Structural-and-Shortcut-Policies"><a class="docs-heading-anchor" href="#Example-5-Structural-and-Shortcut-Policies">Example 5 - Structural and Shortcut Policies</a><a id="Example-5-Structural-and-Shortcut-Policies-1"></a><a class="docs-heading-anchor-permalink" href="#Example-5-Structural-and-Shortcut-Policies" title="Permalink"></a></h2><p><code>examples/RecursiveAssignment</code> demonstrates structural requirements such as requiring recursion and marking a docstring separately from behavioural tests.</p><p><code>examples/ShortcutPolicyAssignment</code> demonstrates a stricter AI/package policy and a zero-mark gate for a forbidden shortcut package. These examples are useful starting points for assignments where the method matters, not just the output.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="features/">Features »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 3 June 2026 00:38">Wednesday 3 June 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
