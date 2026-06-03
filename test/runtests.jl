@@ -985,7 +985,7 @@ assignment
     @test_throws ArgumentError SkeletonizePackage.read_assignment_config(config_path)
 end
 
-if get(ENV, "SKELETONIZE_RUN_QUALITY_TESTS", "true") == "true"
+if get(ENV, "SKELETONIZE_RUN_QUALITY_TESTS", "false") == "true"
     include("aqua.jl")
     if VERSION.major == 1 && VERSION.minor == 12
         include("jet.jl")

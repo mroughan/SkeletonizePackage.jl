@@ -23,7 +23,7 @@ jobs:
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          Pkg.activate("test")
+          Pkg.activate(joinpath("test", "quality"))
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
           include(joinpath(pwd(), "test", "aqua.jl"))
