@@ -10,6 +10,85 @@ const _RE_SIDE_EFFECTS    = r"\b(push!|append!|setindex!|delete!|empty!|sort!|sp
 const _RE_INDEXED_ASSIGN  = r"\[[^\]]+\]\s*="
 const _RE_EXPORT_LINE     = r"^export\b"
 
+"""
+    _strip_code_noise(text::AbstractString) -> String
+
+State-machine pass that replaces comment and string-literal content with spaces,
+preserving newlines so that line numbers stay meaningful. Prevents property-check
+regexes from matching keywords that appear inside comments or string literals.
+
+Handles:
+- `# line comments` (up to but not including the newline)
+- `#= ... =#` block comments (depth-tracked, so nested block comments work)
+- `\"\"\"...\"\"\"` triple-quoted strings
+- `\"...\"` double-quoted strings (with backslash-escape awareness)
+"""
+function _strip_code_noise(text::AbstractString)
+    chars = collect(text)
+    n = length(chars)
+    out = copy(chars)
+    i = 1
+    while i <= n
+        c = chars[i]
+        # Triple-quoted string
+        if c == '"' && i + 2 <= n && chars[i+1] == '"' && chars[i+2] == '"'
+            out[i] = out[i+1] = out[i+2] = ' '
+            i += 3
+            while i <= n
+                if i + 2 <= n && chars[i] == '"' && chars[i+1] == '"' && chars[i+2] == '"'
+                    out[i] = out[i+1] = out[i+2] = ' '
+                    i += 3
+                    break
+                end
+                out[i] = chars[i] == '\n' ? '\n' : ' '
+                i += 1
+            end
+        # Double-quoted string
+        elseif c == '"'
+            out[i] = ' '
+            i += 1
+            while i <= n
+                if chars[i] == '\\'
+                    out[i] = ' '
+                    i += 1
+                    i <= n && (out[i] = chars[i] == '\n' ? '\n' : ' '; i += 1)
+                elseif chars[i] == '"'
+                    out[i] = ' '
+                    i += 1
+                    break
+                else
+                    out[i] = chars[i] == '\n' ? '\n' : ' '
+                    i += 1
+                end
+            end
+        # Block comment (depth-tracked for nesting)
+        elseif c == '#' && i + 1 <= n && chars[i+1] == '='
+            depth = 1
+            out[i] = out[i+1] = ' '
+            i += 2
+            while i <= n && depth > 0
+                if i + 1 <= n && chars[i] == '#' && chars[i+1] == '='
+                    depth += 1; out[i] = out[i+1] = ' '; i += 2
+                elseif i + 1 <= n && chars[i] == '=' && chars[i+1] == '#'
+                    depth -= 1; out[i] = out[i+1] = ' '; i += 2
+                else
+                    out[i] = chars[i] == '\n' ? '\n' : ' '
+                    i += 1
+                end
+            end
+        # Line comment
+        elseif c == '#'
+            while i <= n && chars[i] != '\n'
+                out[i] = ' '
+                i += 1
+            end
+        else
+            i += 1
+        end
+    end
+    return String(out)
+end
+
 struct SourceFunction
     name::Symbol
     args::Vector{String}
@@ -234,7 +313,7 @@ end
 function _is_exported(project::SourceProject, name::Symbol)
     exports = String[]
     collecting = false
-    for line in split(project.text, '\n')
+    for line in split(_strip_code_noise(project.text), '\n')
         stripped = strip(line)
         if occursin(_RE_EXPORT_LINE, stripped)
             push!(exports, stripped[length("export ")+1:end])
@@ -263,36 +342,38 @@ end
 
 function _has_import(project::SourceProject, name::Symbol)
     pattern = Regex("\\b(using|import)\\s+([^\\n]*\\b$(name)\\b)")
-    return occursin(pattern, project.text)
+    return occursin(pattern, _strip_code_noise(project.text))
 end
 
 function _calls(project::SourceProject, function_name::Union{Nothing, Symbol}, callee::Symbol)
-    text = function_name === nothing ? project.text : get(project.functions, function_name, SourceFunction(function_name, String[], "", "")).body
-    return occursin(Regex("\\b$(callee)\\s*\\("), text)
+    raw = function_name === nothing ? project.text : get(project.functions, function_name, SourceFunction(function_name, String[], "", "")).body
+    return occursin(Regex("\\b$(callee)\\s*\\("), _strip_code_noise(raw))
 end
 
 function _uses_operator(project::SourceProject, function_name::Symbol, operator::AbstractString)
     f = get(project.functions, function_name, nothing)
     f === nothing && return false
-    return occursin(operator, f.body)
+    return occursin(operator, _strip_code_noise(f.body))
 end
 
 function _has_loop(project::SourceProject, function_name::Symbol)
     f = get(project.functions, function_name, nothing)
     f === nothing && return false
-    return occursin(_RE_LOOP_KEYWORD, f.body)
+    clean = _strip_code_noise(f.body)
+    return occursin(_RE_LOOP_KEYWORD, clean)
 end
 
 function _has_global(project::SourceProject, function_name::Symbol)
     f = get(project.functions, function_name, nothing)
     f === nothing && return false
-    return occursin(_RE_GLOBAL_KEYWORD, f.body)
+    return occursin(_RE_GLOBAL_KEYWORD, _strip_code_noise(f.body))
 end
 
 function _has_side_effects(project::SourceProject, function_name::Symbol)
     f = get(project.functions, function_name, nothing)
     f === nothing && return false
-    return occursin(_RE_SIDE_EFFECTS, f.body) || occursin(_RE_INDEXED_ASSIGN, f.body)
+    clean = _strip_code_noise(f.body)
+    return occursin(_RE_SIDE_EFFECTS, clean) || occursin(_RE_INDEXED_ASSIGN, clean)
 end
 
 function _is_deterministic(caller::Module, function_name::Symbol)
@@ -337,7 +418,7 @@ function _nested_loop_depth(text::AbstractString)
     depth = 0
     maxdepth = 0
     stack = Symbol[]
-    for line in split(text, '\n')
+    for line in split(_strip_code_noise(text), '\n')
         stripped = strip(line)
         if occursin(_RE_LOOP_OPENER, stripped)
             depth += 1

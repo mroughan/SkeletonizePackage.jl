@@ -247,25 +247,129 @@ Annotation blocks in the Markdown file are transformed in student mode, so
 `grade_submission(reference_path, submission_path)` grades a student submission
 against the reference package rubric. The returned `GradeResult` includes:
 
-- `student_report`: Markdown feedback for the student, including test output and
-  marks summarized against the rubric.
-- `csv_header` and `csv_row`: a one-row marks summary suitable for concatenating
-  into a larger CSV file with one row per student.
+- `student_report`: Markdown feedback for the student.
+- `html_report`: The same feedback as a self-contained HTML document.
+- `gradescope_json`: A Gradescope autograder JSON string (always populated).
+- `csv_header` and `csv_row`: a one-row marks summary for class-scale CSV files.
+- `failure_category`: one of `:none`, `:load_failure`, `:test_failure`, `:timeout`, `:zero_gate`.
+- `timed_out`: `true` when the submission test process was killed by the timeout.
 
-The CLI can write both outputs:
+### Keyword options
+
+| Keyword | Default | Description |
+|---|---|---|
+| `student_id` | `basename(submission_path)` | Identifier in reports and CSV |
+| `report_path` | `nothing` | Write Markdown report to file |
+| `html_path` | `nothing` | Write HTML report to file |
+| `gradescope_path` | `nothing` | Write Gradescope JSON to file |
+| `csv_path` | `nothing` | Write CSV marks row to file |
+| `csv_format` | `:default` | Rename student-id column for LMS import |
+| `append_csv` | `true` | Append to `csv_path` rather than overwrite |
+| `test_timeout_seconds` | `120` | Kill submission test process after N seconds (0 = no limit) |
+| `reference_timeout_seconds` | `30` | Per-reference-test subprocess timeout |
+
+### LMS-ready CSV export
+
+Set `csv_format` to rename the student-id column to match your LMS grade-import
+format:
+
+```julia
+grade_submission(reference, submission;
+    csv_path="marks.csv",
+    csv_format=:canvas,        # renames to "SIS Login ID"
+    # csv_format=:moodle,      # renames to "username"
+    # csv_format=:blackboard,  # renames to "Username"
+)
+```
+
+### Gradescope integration
+
+Pass `gradescope_path` to write a [Gradescope autograder JSON
+file](https://gradescope-autograders.readthedocs.io/en/latest/specs/) alongside
+the other outputs. The JSON includes per-criterion scores, visibility, and stable
+rubric IDs:
+
+```julia
+grade_submission(reference, submission;
+    student_id="s123",
+    gradescope_path="/autograder/results/results.json",
+)
+```
+
+### HTML feedback reports
+
+Pass `html_path` to write a styled HTML feedback report:
+
+```julia
+grade_submission(reference, submission;
+    student_id="s123",
+    report_path="s123-feedback.md",
+    html_path="s123-feedback.html",
+)
+```
+
+The HTML report is also always available as `result.html_report` without writing
+to disk.
+
+The CLI exposes all these options:
 
 ```bash
-julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade ReferencePackage SubmissionPackage --student-id s123 --report s123-feedback.md --csv marks.csv
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- \
+  grade ReferencePackage SubmissionPackage \
+  --student-id s123 \
+  --report s123-feedback.md \
+  --html s123-feedback.html \
+  --gradescope results.json \
+  --csv marks.csv \
+  --csv-format canvas \
+  --test-timeout 120 \
+  --ref-timeout 30
 ```
+
+## Assignment template library
+
+`examples/` includes ready-to-use reference packages spanning different Julia
+teaching domains:
+
+| Example | Topic | Key concepts |
+|---|---|---|
+| `SortingAssignment` | Algorithms | in-place sort, forbidden packages |
+| `RecursiveAssignment` | Recursion | Fibonacci, property checks |
+| `ReferenceOracleAssignment` | Reference tests | oracle comparison |
+| `StringProcessingAssignment` | String processing | `Dict`, `split`, word frequencies |
+| `NumericalMethodsAssignment` | Numerical methods | bisection root-finding, convergence |
+| `ConfiguredAssignment` | Config file workflow | `.inc` config, name normalization |
+| `ThinAssignment` | Minimal template | bare-minimum structure |
+
+Each example has a complete `src/`, `test/`, `SkeletonizePackage.inc`,
+`GRADING_PLAN.md`, and `student_notes.md`. Use any as a starting point:
+
+```julia
+cp -r examples/StringProcessingAssignment MyNewAssignment
+# then edit Project.toml, src/, test/, student_notes.md
+validate_reference_package("MyNewAssignment"; io=stdout)
+```
+
+## VS Code snippets
+
+Copy `.vscode/skeletonize.code-snippets` into your own `.vscode/` folder (or
+your global snippets file) to get tab-completable annotation snippets in Julia
+files. Available prefixes: `sol`, `scaff`, `stest`, `htest`, `marks`, `areqs`,
+`req`, `forb`, `rtest`.
+
+## Property checks
+
+`@require` and `@forbid` checks (`exported`, `calls`, `loop`, `imports`, etc.)
+run on the source text of the submission with comments and string literals
+pre-stripped, preventing false positives from keywords that appear only in
+comments or string values.
 
 ## Current status
 
-This is still an early package, but it now validates reference packages before
-generation and reports both blocking transformation errors and teaching-design
-warnings. Validation also checks that Julia source parses before and after
-annotation removal. The transformer remains conservative: annotation macros must
-appear on their own line. Future versions may replace the text transformer with
-a concrete syntax tree transformation using `JuliaSyntax.jl` or a similar parser.
+This is still an early package. Validation checks for blocking transformation
+errors and teaching-design warnings. Property checks use comment/string-stripped
+source text to avoid false positives. The transformer remains conservative:
+annotation macros must appear on their own line.
 
 ## AI use disclosure
 

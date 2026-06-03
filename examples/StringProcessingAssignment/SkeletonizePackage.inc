@@ -1,0 +1,12 @@
+---
+[assignment]
+reference_path = "."
+skeleton_path = "../StringProcessingAssignmentStudent"
+mode = "student"
+force = "false"
+validate = "true"
+instructions_path = "student_notes.md"
+ai_policy = "recorded"
+---
+config
+assignment

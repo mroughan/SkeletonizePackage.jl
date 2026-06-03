@@ -8,7 +8,7 @@ Commands:
 - `validate PATH`
 - `generate REFERENCE SKELETON [--force] [--no-validate] [--ai-policy forbidden|recorded|allowed]`
 - `generate --config SkeletonizePackage.inc [--force]`
-- `grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--csv PATH] [--replace-csv]`
+- `grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--html PATH] [--gradescope PATH] [--csv PATH] [--csv-format default|canvas|moodle|blackboard] [--replace-csv] [--test-timeout N] [--ref-timeout N]`
 - `init PATH [--name NAME] [--force] [--ai-policy forbidden|recorded|allowed]`
 
 # Example
@@ -85,23 +85,38 @@ function _main_generate(args)
 end
 
 function _main_grade(args)
-    replace_csv = _take_flag!(args, "--replace-csv")
-    student_id = _take_option!(args, "--student-id")
-    report_path = _take_option!(args, "--report")
-    csv_path = _take_option!(args, "--csv")
+    replace_csv        = _take_flag!(args, "--replace-csv")
+    student_id         = _take_option!(args, "--student-id")
+    report_path        = _take_option!(args, "--report")
+    html_path          = _take_option!(args, "--html")
+    gradescope_path    = _take_option!(args, "--gradescope")
+    csv_path           = _take_option!(args, "--csv")
+    csv_format_str     = _take_option!(args, "--csv-format")
+    test_timeout_str   = _take_option!(args, "--test-timeout")
+    ref_timeout_str    = _take_option!(args, "--ref-timeout")
     length(args) == 2 || return _usage(stderr, 1)
+    csv_format       = csv_format_str   === nothing ? :default : Symbol(csv_format_str)
+    test_timeout     = test_timeout_str === nothing ? 120      : parse(Int, test_timeout_str)
+    ref_timeout      = ref_timeout_str  === nothing ? 30       : parse(Int, ref_timeout_str)
     result = grade_submission(
         args[1],
         args[2];
         student_id=something(student_id, basename(abspath(args[2]))),
         report_path=report_path,
+        html_path=html_path,
+        gradescope_path=gradescope_path,
         csv_path=csv_path,
+        csv_format=csv_format,
         append_csv=!replace_csv,
+        test_timeout_seconds=test_timeout,
+        reference_timeout_seconds=ref_timeout,
     )
-    if report_path === nothing
+    if report_path === nothing && html_path === nothing
         print(result.student_report)
     else
-        println(report_path)
+        report_path    === nothing || println(report_path)
+        html_path      === nothing || println(html_path)
+        gradescope_path === nothing || println(gradescope_path)
     end
     csv_path === nothing || println(csv_path)
     return isvalid(result) ? 0 : 2
@@ -151,7 +166,7 @@ Usage:
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate PATH
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate REFERENCE SKELETON [--force] [--no-validate] [--ai-policy forbidden|recorded|allowed]
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate --config SkeletonizePackage.inc [--force]
-  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--csv PATH] [--replace-csv]
+  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--html PATH] [--gradescope PATH] [--csv PATH] [--csv-format default|canvas|moodle|blackboard] [--replace-csv] [--test-timeout N] [--ref-timeout N]
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init PATH [--name NAME] [--force] [--ai-policy forbidden|recorded|allowed]
 """)
     return code

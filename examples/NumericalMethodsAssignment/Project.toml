@@ -1,0 +1,7 @@
+name = "NumericalMethodsAssignment"
+uuid = "d3f71a2e-4c8b-5a3f-8e2d-9b0c1a4e7f3d"
+version = "0.1.0"
+
+[deps]
+SkeletonizePackage = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

@@ -59,6 +59,17 @@ end
 
 Result returned by [`grade_submission`](@ref).
 
+Fields:
+- `passed`, `exitcode`, `stdout`, `stderr` — overall pass/fail and process output.
+- `student_id`, `student_report`, `html_report` — per-student feedback in Markdown and HTML.
+- `csv_header`, `csv_row` — one-row CSV mark summary (`:default` format).
+- `gradescope_json` — Gradescope autograder JSON (always populated; write via `gradescope_path`).
+- `rubric_items`, `criterion_results`, `property_results`, `reference_test_results` — structured results.
+- `awarded_by_category`, `possible_by_category`, `total_awarded`, `total_possible` — mark totals.
+- `timed_out` — true when the submission test process exceeded `test_timeout_seconds`.
+- `failure_category` — `:none`, `:load_failure`, `:test_failure`, `:timeout`, or `:zero_gate`.
+- `failure_message` — human-readable explanation of the failure category.
+
 # Example
 
 ```julia
@@ -91,6 +102,11 @@ struct GradeResult
     reference_test_results::Vector{ReferenceTestResult}
     property_results::Vector{PropertyCheckResult}
     criterion_results::Vector{CriterionResult}
+    timed_out::Bool
+    failure_category::Symbol
+    failure_message::String
+    gradescope_json::String
+    html_report::String
 end
 
 function GradeResult(passed::Bool, exitcode::Int, stdout::String, stderr::String)
@@ -98,8 +114,10 @@ function GradeResult(passed::Bool, exitcode::Int, stdout::String, stderr::String
     awarded = Dict{String, Int}()
     total = 0
     header, row = _grade_csv(["student_id", "status", "total"], ["", passed ? "passed" : "failed", string(passed ? total : 0)])
-    report = _student_grade_report("", passed, exitcode, RubricItem[], ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], awarded, possible, passed ? total : 0, total, stdout, stderr)
-    return GradeResult(passed, exitcode, stdout, stderr, "", RubricItem[], awarded, possible, passed ? total : 0, total, report, header, row, ReferenceTestResult[], PropertyCheckResult[], CriterionResult[])
+    report = _student_grade_report("", passed, exitcode, RubricItem[], ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], awarded, possible, passed ? total : 0, total, :none, "", stdout, stderr)
+    html = _build_html_report(report, :none, "")
+    gsj = _build_gradescope_json("", CriterionResult[], passed ? total : 0, total)
+    return GradeResult(passed, exitcode, stdout, stderr, "", RubricItem[], awarded, possible, passed ? total : 0, total, report, header, row, ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], false, :none, "", gsj, html)
 end
 
 Base.isvalid(result::GradeResult) = result.passed
@@ -110,30 +128,25 @@ function Base.show(io::IO, result::GradeResult)
 end
 
 """
-    grade_submission(reference_path, submission_path; test_path=nothing, student_id=basename(submission_path), report_path=nothing, csv_path=nothing, append_csv=true)
+    grade_submission(reference_path, submission_path; kwargs...)
 
-Run the first-pass grading harness for a student submission package.
+Run the grading harness for a student submission package.
 
-The current harness checks that `reference_path` and `submission_path` are
-package directories, then runs the submission tests in an isolated Julia
-process. `test_path` may point to an alternate test file.
+The harness runs the submission's tests in an isolated Julia process, then evaluates
+any `@reference_test` entries and `@require`/`@forbid` property checks.
 
-Any `@reference_test f generator=...` or `@reference_test f inputs=...` entries
-in the reference package are then executed by running the reference and
-submission packages in separate Julia processes. This avoids module-name
-collisions and lets the grader compare the submitted function against the
-teacher's reference implementation.
+# Keywords
 
-The result includes two grading outputs:
-
-- `student_report`, a Markdown report intended for student feedback.
-- `csv_header` and `csv_row`, a CSV-friendly mark summary suitable for
-  concatenating one row per student.
-
-The result records both category totals and per-criterion outcomes. Ordinary
-`@marks` criteria are awarded when the submission tests and executable reference
-tests pass. Marked `@require` and `@forbid` criteria are awarded independently,
-unless a failed `zero_marks=true` criterion zeros the whole assignment.
+- `test_path` — alternate test file (default: `submission/test/runtests.jl`).
+- `student_id` — identifier used in reports and CSV rows (default: `basename(submission_path)`).
+- `report_path` — write Markdown report to this file when set.
+- `html_path` — write HTML report to this file when set.
+- `gradescope_path` — write Gradescope JSON to this file when set.
+- `csv_path` — write CSV marks row to this file when set.
+- `csv_format` — `:default`, `:canvas`, `:moodle`, or `:blackboard` (renames the student-id column).
+- `append_csv` — append to `csv_path` rather than overwriting (default `true`).
+- `test_timeout_seconds` — kill the submission test process after this many seconds (default `120`, `0` = no limit).
+- `reference_timeout_seconds` — per-reference-test subprocess timeout (default `30`, `0` = no limit).
 
 # Example
 
@@ -154,19 +167,28 @@ julia> result.csv_row
 
 julia> startswith(result.student_report, "# Student Feedback Report")
 true
-```
 
-When the submission tests fail, the same fields are still populated:
+julia> !isempty(result.html_report)
+true
 
-```julia
-julia> result.passed
-false
-
-julia> result.total_awarded
-0
+julia> !isempty(result.gradescope_json)
+true
 ```
 """
-function grade_submission(reference_path::AbstractString, submission_path::AbstractString; test_path=nothing, student_id::AbstractString=basename(abspath(submission_path)), report_path::Union{Nothing, AbstractString}=nothing, csv_path::Union{Nothing, AbstractString}=nothing, append_csv::Bool=true)
+function grade_submission(
+    reference_path::AbstractString,
+    submission_path::AbstractString;
+    test_path=nothing,
+    student_id::AbstractString=basename(abspath(submission_path)),
+    report_path::Union{Nothing, AbstractString}=nothing,
+    html_path::Union{Nothing, AbstractString}=nothing,
+    gradescope_path::Union{Nothing, AbstractString}=nothing,
+    csv_path::Union{Nothing, AbstractString}=nothing,
+    csv_format::Symbol=:default,
+    append_csv::Bool=true,
+    test_timeout_seconds::Int=120,
+    reference_timeout_seconds::Int=30,
+)
     isdir(reference_path) || throw(ArgumentError("reference_path is not a directory"))
     isdir(submission_path) || throw(ArgumentError("submission_path is not a directory"))
     selected_test_path = test_path === nothing ? joinpath(submission_path, "test", "runtests.jl") : test_path
@@ -178,14 +200,13 @@ function grade_submission(reference_path::AbstractString, submission_path::Abstr
     stdout_path = tempname()
     stderr_path = tempname()
     try
-        proc = run(pipeline(cmd; stdout=stdout_path, stderr=stderr_path); wait=false)
-        wait(proc)
-        stdout = read(stdout_path, String)
-        stderr = read(stderr_path, String)
-        reference_results = _run_reference_tests(reference_path, submission_path, reference_specs)
+        proc, timed_out = _run_with_timeout(cmd, stdout_path, stderr_path; timeout_seconds=test_timeout_seconds)
+        stdout_text = read(stdout_path, String)
+        stderr_text = read(stderr_path, String)
+        reference_results = _run_reference_tests(reference_path, submission_path, reference_specs; timeout_seconds=reference_timeout_seconds)
         property_results = _run_property_checks(submission_path, rubric)
         zeroed = any(result -> result.zero_marks && !result.passed, property_results)
-        behavioral_passed = success(proc) && all(result -> result.passed, reference_results)
+        behavioral_passed = !timed_out && success(proc) && all(result -> result.passed, reference_results)
         passed = behavioral_passed && all(result -> result.passed || result.points == 0, property_results) && !zeroed
         criterion_results = _criterion_results(rubric, property_results, reference_results, behavioral_passed, zeroed)
         possible = _rubric_points_by_category(rubric)
@@ -196,10 +217,18 @@ function grade_submission(reference_path::AbstractString, submission_path::Abstr
         header_values = vcat(["student_id", "status"], categories, ["total"])
         row_values = vcat([String(student_id), passed ? "passed" : "failed"], [string(get(awarded, category, 0)) for category in categories], [string(total_awarded)])
         header, row = _grade_csv(header_values, row_values)
-        report = _student_grade_report(String(student_id), passed, proc.exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, stdout, stderr)
-        result = GradeResult(passed, proc.exitcode, stdout, stderr, String(student_id), rubric, awarded, possible, total_awarded, total_possible, report, header, row, reference_results, property_results, criterion_results)
+        category, cat_message = _categorize_failure(proc.exitcode, stdout_text, stderr_text, timed_out, zeroed)
+        report = _student_grade_report(String(student_id), passed, proc.exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, category, cat_message, stdout_text, stderr_text)
+        html = _build_html_report(report, category, cat_message)
+        gsj = _build_gradescope_json(String(student_id), criterion_results, total_awarded, total_possible)
+        result = GradeResult(passed, proc.exitcode, stdout_text, stderr_text, String(student_id), rubric, awarded, possible, total_awarded, total_possible, report, header, row, reference_results, property_results, criterion_results, timed_out, category, cat_message, gsj, html)
         report_path === nothing || write(report_path, report)
-        csv_path === nothing || _write_grade_csv(csv_path, header, row; append=append_csv)
+        html_path === nothing || write(html_path, html)
+        gradescope_path === nothing || write(gradescope_path, gsj)
+        if csv_path !== nothing
+            lms_header, lms_row = _lms_csv(header, row, csv_format)
+            _write_grade_csv(csv_path, lms_header, lms_row; append=append_csv)
+        end
         return result
     finally
         rm(stdout_path; force=true)
@@ -225,12 +254,12 @@ function _run_property_checks(submission_path::AbstractString, rubric::Vector{Ru
     return results
 end
 
-function _run_reference_tests(reference_path::AbstractString, submission_path::AbstractString, specs::Vector{ReferenceTestSpec})
+function _run_reference_tests(reference_path::AbstractString, submission_path::AbstractString, specs::Vector{ReferenceTestSpec}; timeout_seconds::Int=30)
     isempty(specs) && return ReferenceTestResult[]
     results = ReferenceTestResult[]
     for spec in specs
-        reference_values = _evaluate_reference_spec(reference_path, spec, :teacher)
-        submission_values = _evaluate_reference_spec(submission_path, spec, :student)
+        reference_values = _evaluate_reference_spec(reference_path, spec, :teacher; timeout_seconds=timeout_seconds)
+        submission_values = _evaluate_reference_spec(submission_path, spec, :student; timeout_seconds=timeout_seconds)
         n = max(length(reference_values), length(submission_values))
         for index in 1:n
             ref = index <= length(reference_values) ? reference_values[index] : (ok=false, input="", output="", error="missing reference result")
@@ -252,7 +281,7 @@ function _run_reference_tests(reference_path::AbstractString, submission_path::A
     return results
 end
 
-function _evaluate_reference_spec(package_path::AbstractString, spec::ReferenceTestSpec, mode::Symbol)
+function _evaluate_reference_spec(package_path::AbstractString, spec::ReferenceTestSpec, mode::Symbol; timeout_seconds::Int=30)
     output_path = tempname()
     script_path = tempname() * ".jl"
     stderr_path = tempname()
@@ -261,8 +290,10 @@ function _evaluate_reference_spec(package_path::AbstractString, spec::ReferenceT
     grader_project = active_project === nothing ? "" : dirname(active_project)
     cmd = `$(Base.julia_cmd()) --project=$(abspath(package_path)) $(script_path) $(abspath(package_path)) $(String(spec.function_name)) $(spec.input_expr) $(output_path) $(String(mode)) $(grader_project)`
     try
-        proc = run(pipeline(cmd; stdout=devnull, stderr=stderr_path); wait=false)
-        wait(proc)
+        proc, timed_out = _run_with_timeout(cmd, devnull, stderr_path; timeout_seconds=timeout_seconds)
+        if timed_out
+            return [(ok=false, input="", output="", error="reference test timed out after $(timeout_seconds)s")]
+        end
         if success(proc) && isfile(output_path)
             return open(deserialize, output_path)
         end
@@ -427,12 +458,15 @@ function _awarded_points_by_category(rubric::Vector{RubricItem}, criterion_resul
     return awarded
 end
 
-function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, stdout::String, stderr::String)
+function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, failure_category::Symbol, failure_message::AbstractString, stdout::String, stderr::String)
     io = IOBuffer()
     println(io, "# Student Feedback Report")
     println(io)
     isempty(student_id) || println(io, "Student: `", student_id, "`")
     println(io, "Status: ", passed ? "passed" : "failed")
+    if failure_category != :none
+        println(io, "Failure: **", failure_category, "** — ", failure_message)
+    end
     println(io, "Exit code: ", exitcode)
     println(io, "Total: ", total_awarded, " / ", total_possible, " marks")
     println(io)
@@ -534,4 +568,211 @@ function _write_grade_csv(path::AbstractString, header::AbstractString, row::Abs
         println(io, row)
     end
     return path
+end
+
+# ── Timeout helper ────────────────────────────────────────────────────────────
+
+"""
+    _run_with_timeout(cmd, stdout_path, stderr_path; timeout_seconds) -> (proc, timed_out)
+
+Spawn `cmd` and wait up to `timeout_seconds` for it to finish. If the process exceeds
+the limit it is killed and `timed_out` is returned as `true`. Pass `timeout_seconds=0`
+to wait indefinitely.
+"""
+function _run_with_timeout(cmd, stdout_path, stderr_path; timeout_seconds::Int)
+    proc = run(pipeline(cmd; stdout=stdout_path, stderr=stderr_path); wait=false)
+    if timeout_seconds > 0
+        status = timedwait(() -> process_exited(proc), float(timeout_seconds))
+        if status == :timed_out
+            kill(proc)
+            wait(proc)
+            return proc, true
+        end
+    else
+        wait(proc)
+    end
+    return proc, false
+end
+
+# ── Failure categorisation ────────────────────────────────────────────────────
+
+"""
+    _categorize_failure(exitcode, stdout, stderr, timed_out, zeroed) -> (category, message)
+
+Classify why grading failed from process outputs and flags.
+"""
+function _categorize_failure(exitcode::Int, stdout::String, stderr::String, timed_out::Bool, zeroed::Bool)
+    timed_out  && return (:timeout,      "submission tests timed out")
+    zeroed     && return (:zero_gate,    "a zero_marks=true requirement failed")
+    exitcode == 0 && return (:none, "")
+    combined = stdout * stderr
+    if occursin(r"Package .* not found|cannot find package|not found in current path"i, combined)
+        return (:load_failure, "package not found — check Project.toml dependencies")
+    end
+    if occursin(r"LoadError|ParseError|syntax: |UndefVarError.*top-level"i, stderr)
+        return (:load_failure, _first_error_line(stderr))
+    end
+    return (:test_failure, "tests failed with exit code $exitcode")
+end
+
+function _first_error_line(text::AbstractString)
+    for line in split(text, '\n')
+        s = strip(line)
+        isempty(s) && continue
+        (startswith(s, "ERROR") || startswith(s, "LoadError") || startswith(s, "ParseError")) && return s
+    end
+    nonempty = filter(!isempty ∘ strip, split(text, '\n'))
+    return isempty(nonempty) ? "" : strip(first(nonempty))
+end
+
+# ── JSON helpers ──────────────────────────────────────────────────────────────
+
+function _json_string(s::AbstractString)
+    s = replace(s, "\\" => "\\\\", "\"" => "\\\"", "\n" => "\\n",
+                    "\r" => "\\r",  "\t" => "\\t")
+    return "\"" * s * "\""
+end
+
+"""
+    _build_gradescope_json(student_id, criterion_results, total_awarded, total_possible) -> String
+
+Build a Gradescope autograder JSON string without requiring an external JSON package.
+Spec: https://gradescope-autograders.readthedocs.io/en/latest/specs/
+"""
+function _build_gradescope_json(student_id::AbstractString, criterion_results::Vector{CriterionResult}, total_awarded::Int, total_possible::Int)
+    io = IOBuffer()
+    println(io, "{")
+    println(io, "  \"score\": ", total_awarded, ",")
+    println(io, "  \"max_score\": ", total_possible, ",")
+    println(io, "  \"output\": ", _json_string("Student: $student_id"), ",")
+    println(io, "  \"visibility\": \"after_published\",")
+    print(io,   "  \"tests\": [")
+    tests = [r for r in criterion_results if r.kind in (:marks, :require, :forbid)]
+    if isempty(tests)
+        println(io, "]")
+    else
+        println(io)
+        for (i, result) in enumerate(tests)
+            comma = i < length(tests) ? "," : ""
+            vis = result.visibility == :public ? "visible" : "after_published"
+            println(io, "    {")
+            println(io, "      \"score\": ", result.awarded, ",")
+            println(io, "      \"max_score\": ", result.points, ",")
+            println(io, "      \"name\": ", _json_string(result.description), ",")
+            println(io, "      \"number\": ", _json_string(result.id), ",")
+            println(io, "      \"visibility\": ", _json_string(vis), ",")
+            println(io, "      \"status\": ", _json_string(result.passed ? "passed" : "failed"))
+            println(io, "    }", comma)
+        end
+        println(io, "  ]")
+    end
+    print(io, "}")
+    return String(take!(io))
+end
+
+# ── HTML report helpers ───────────────────────────────────────────────────────
+
+function _html_escape(s::AbstractString)
+    s = replace(s, "&" => "&amp;", "<" => "&lt;", ">" => "&gt;")
+    return s
+end
+
+# Convert inline backtick spans and **bold** to HTML; HTML-escape everything else.
+function _fmt_inline(text::AbstractString)
+    parts = split(text, '`')
+    io = IOBuffer()
+    for (i, part) in enumerate(parts)
+        if isodd(i)
+            # Regular text — escape HTML then handle **bold**
+            escaped = _html_escape(part)
+            write(io, replace(escaped, r"\*\*([^*]+)\*\*" => s -> "<strong>$(s[3:end-3])</strong>"))
+        else
+            write(io, "<code>", _html_escape(part), "</code>")
+        end
+    end
+    return String(take!(io))
+end
+
+"""
+    _build_html_report(markdown_report, failure_category, failure_message) -> String
+
+Convert a Markdown-format student report to a self-contained HTML document with
+inline CSS. The conversion handles headings, bullet lists, fenced code blocks,
+and inline backtick spans.
+"""
+function _build_html_report(markdown_report::AbstractString, failure_category::Symbol, failure_message::AbstractString)
+    io_body = IOBuffer()
+    in_pre = false
+    in_ul  = false
+    for raw_line in split(markdown_report, '\n')
+        if !in_pre && startswith(raw_line, "```")
+            in_ul && (println(io_body, "</ul>"); in_ul = false)
+            println(io_body, "<pre>"); in_pre = true; continue
+        end
+        if in_pre && startswith(raw_line, "```")
+            println(io_body, "</pre>"); in_pre = false; continue
+        end
+        if in_pre; println(io_body, _html_escape(raw_line)); continue; end
+        if startswith(raw_line, "### ")
+            in_ul && (println(io_body, "</ul>"); in_ul = false)
+            println(io_body, "<h3>", _fmt_inline(raw_line[5:end]), "</h3>")
+        elseif startswith(raw_line, "## ")
+            in_ul && (println(io_body, "</ul>"); in_ul = false)
+            println(io_body, "<h2>", _fmt_inline(raw_line[4:end]), "</h2>")
+        elseif startswith(raw_line, "# ")
+            in_ul && (println(io_body, "</ul>"); in_ul = false)
+            println(io_body, "<h1>", _fmt_inline(raw_line[3:end]), "</h1>")
+        elseif startswith(raw_line, "- ")
+            in_ul || (println(io_body, "<ul>"); in_ul = true)
+            println(io_body, "<li>", _fmt_inline(raw_line[3:end]), "</li>")
+        elseif isempty(strip(raw_line))
+            in_ul && (println(io_body, "</ul>"); in_ul = false)
+        else
+            in_ul && (println(io_body, "</ul>"); in_ul = false)
+            println(io_body, "<p>", _fmt_inline(raw_line), "</p>")
+        end
+    end
+    in_ul && println(io_body, "</ul>")
+
+    banner = failure_category == :none ? "" :
+        "<div class=\"failure-banner\"><strong>$(uppercase(string(failure_category)))</strong>: $(_html_escape(String(failure_message)))</div>\n"
+    body = String(take!(io_body))
+
+    return """<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Student Feedback</title>
+<style>
+body{font-family:sans-serif;max-width:860px;margin:2em auto;padding:0 1em;color:#222}
+h1{border-bottom:2px solid #444;padding-bottom:.3em}
+h2{margin-top:1.5em;border-bottom:1px solid #ddd;padding-bottom:.2em}
+h3{margin-top:1em}
+.failure-banner{background:#fde;border:1px solid #c88;padding:.5em 1em;border-radius:4px;margin:1em 0;font-size:.95em}
+ul{margin:.3em 0;padding-left:1.5em}
+li{margin:.15em 0}
+code{background:#f0f0f0;padding:0 .25em;border-radius:2px;font-family:monospace;font-size:.93em}
+pre{background:#f4f4f4;padding:.8em;overflow-x:auto;border-radius:4px;font-size:.9em;white-space:pre-wrap}
+</style>
+</head>
+<body>
+$(banner)$(body)
+</body>
+</html>"""
+end
+
+# ── LMS CSV format helper ─────────────────────────────────────────────────────
+
+"""
+    _lms_csv(header, row, format) -> (header, row)
+
+Return `(header, row)` with the `student_id` column renamed per LMS convention.
+`:default` leaves both unchanged; `:canvas` renames to `SIS Login ID`;
+`:moodle` to `username`; `:blackboard` to `Username`.
+"""
+function _lms_csv(header::AbstractString, row::AbstractString, format::Symbol)
+    format == :default && return header, row
+    rename_map = Dict(:canvas => "SIS Login ID", :moodle => "username", :blackboard => "Username")
+    haskey(rename_map, format) || throw(ArgumentError("unknown csv_format :$format — choose :default, :canvas, :moodle, or :blackboard"))
+    parts = split(header, ","; limit=2)
+    new_header = length(parts) == 2 ? _csv_escape(rename_map[format]) * "," * parts[2] : _csv_escape(rename_map[format])
+    return new_header, row
 end

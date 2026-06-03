@@ -483,6 +483,8 @@ end
         "ReferenceOracleAssignment",
         "RecursiveAssignment",
         "ShortcutPolicyAssignment",
+        "StringProcessingAssignment",
+        "NumericalMethodsAssignment",
     ]
 
     tmp = mktempdir()
@@ -655,4 +657,64 @@ end
     ]) == 0
     @test occursin("cli-student,passed,2,2,4", read(cli_csv, String))
     @test occursin("Student: `cli-student`", read(cli_report, String))
+
+    # HTML report
+    @test !isempty(passing.html_report)
+    @test occursin("<html", passing.html_report)
+    @test occursin("student-1", passing.html_report)
+    html_file = joinpath(tmp, "feedback.html")
+    grade_submission(reference, passing_submission; student_id="html-test", html_path=html_file)
+    @test isfile(html_file)
+    @test occursin("passed", read(html_file, String))
+
+    # Gradescope JSON
+    @test !isempty(passing.gradescope_json)
+    @test occursin("\"score\"", passing.gradescope_json)
+    @test occursin("student-1", passing.gradescope_json)
+    gs_file = joinpath(tmp, "gradescope.json")
+    grade_submission(reference, passing_submission; student_id="gs-test", gradescope_path=gs_file)
+    @test isfile(gs_file)
+    @test occursin("\"score\"", read(gs_file, String))
+
+    # failure_category
+    @test passing.failure_category == :none
+    @test failing.failure_category == :test_failure
+    @test forbidden.failure_category == :zero_gate
+
+    # timed_out
+    @test !passing.timed_out
+
+    # LMS CSV formats
+    h, r = passing.csv_header, passing.csv_row
+    canvas_h, canvas_r = SkeletonizePackage._lms_csv(h, r, :canvas)
+    @test startswith(canvas_h, "SIS Login ID")
+    @test canvas_r == r
+    moodle_h, _ = SkeletonizePackage._lms_csv(h, r, :moodle)
+    @test startswith(moodle_h, "username")
+    bb_h, _ = SkeletonizePackage._lms_csv(h, r, :blackboard)
+    @test startswith(bb_h, "Username")
+    @test_throws ArgumentError SkeletonizePackage._lms_csv(h, r, :unknown)
+    lms_csv_file = joinpath(tmp, "canvas.csv")
+    grade_submission(reference, passing_submission; student_id="canvas-1", csv_path=lms_csv_file, csv_format=:canvas)
+    @test startswith(read(lms_csv_file, String), "SIS Login ID")
+
+    # timeout parameter is accepted without error on normal submissions
+    fast_result = grade_submission(reference, passing_submission; student_id="fast", test_timeout_seconds=60, reference_timeout_seconds=20)
+    @test isvalid(fast_result)
+    @test !fast_result.timed_out
+end
+
+@testset "_strip_code_noise" begin
+    scn = SkeletonizePackage._strip_code_noise
+    @test scn("x = 1 # comment")    == "x = 1          "
+    @test scn("#= block =#\nx = 1") == "           \nx = 1"
+    @test scn("x = \"hello\"")      == "x =          "
+    @test scn("x = \"\"\"hi\"\"\"") == "x =           "
+    # preserves newlines inside stripped regions
+    @test count(==('\n'), scn("#= a\nb =#\nx")) == count(==('\n'), "#= a\nb =#\nx")
+    # nested block comments
+    @test scn("#= a #= b =# c =#") == "                  "
+    # keyword in comment is not counted
+    @test !occursin("for",   scn("# for i in 1:10"))
+    @test !occursin("push!", scn("x = \"push!(arr, v)\""))
 end
