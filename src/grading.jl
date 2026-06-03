@@ -688,7 +688,7 @@ function _fmt_inline(text::AbstractString)
         if isodd(i)
             # Regular text — escape HTML then handle **bold**
             escaped = _html_escape(part)
-            write(io, replace(escaped, r"\*\*([^*]+)\*\*" => s -> "<strong>$(s[3:end-3])</strong>"))
+            write(io, replace(escaped, r"\*\*([^*]+)\*\*" => s -> "<strong>$(s[3:end-2])</strong>"))
         else
             write(io, "<code>", _html_escape(part), "</code>")
         end

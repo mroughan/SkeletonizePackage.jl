@@ -24,6 +24,7 @@ SortingAssignmentStudent/
 .DS_Store
 Thumbs.db
 .vscode/
+!.vscode/skeletonize.code-snippets
 .idea/
 *.swp
 *.swo

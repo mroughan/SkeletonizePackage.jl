@@ -925,3 +925,22 @@ end
     @test !occursin("for",   scn("# for i in 1:10"))
     @test !occursin("push!", scn("x = \"push!(arr, v)\""))
 end
+
+@testset "_fmt_inline HTML formatting" begin
+    fi = SkeletonizePackage._fmt_inline
+    # Backtick code spans
+    @test fi("`foo`")             == "<code>foo</code>"
+    @test fi("see `bar` here")    == "see <code>bar</code> here"
+    @test fi("a `b` c `d` e")     == "a <code>b</code> c <code>d</code> e"
+    # Bold spans — the key regression test for the off-by-one bug
+    @test fi("**bold**")          == "<strong>bold</strong>"
+    @test fi("text **bold** end") == "text <strong>bold</strong> end"
+    @test fi("**a** and **b**")   == "<strong>a</strong> and <strong>b</strong>"
+    # HTML escaping in plain text
+    @test occursin("&amp;",  fi("a & b"))
+    @test occursin("&lt;",   fi("a < b"))
+    # HTML escaping inside code spans
+    @test fi("`a < b`")           == "<code>a &lt; b</code>"
+    # No backticks — identity (modulo escaping)
+    @test fi("plain text")        == "plain text"
+end

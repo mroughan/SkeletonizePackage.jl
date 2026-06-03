@@ -379,6 +379,14 @@ annotation macros must appear on their own line.
 
 ## AI use disclosure
 
-This package includes documentation, tests, and project scaffolding that were
-drafted or revised with assistance from OpenAI's Codex. Human review remains
-responsible for correctness, package design, and release decisions.
+This package has been developed with assistance from multiple AI coding agents:
+
+- **Anthropic Claude Sonnet 4.6** (`claude-sonnet-4-6`) — used extensively for
+  code review, refactoring, feature implementation (Gradescope integration, LMS
+  CSV export, timeout handling, HTML reports, noise-stripped property checks),
+  architecture documentation, test writing, and CHANGELOG maintenance.
+- **OpenAI Codex** — used in earlier stages for initial documentation, tests, and
+  project scaffolding.
+
+Human review remains responsible for correctness, package design, and release
+decisions. AI-generated code has been reviewed and tested before inclusion.
