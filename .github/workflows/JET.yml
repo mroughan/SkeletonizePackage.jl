@@ -27,4 +27,4 @@ jobs:
           Pkg.activate(; temp=true)
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.add(PackageSpec(name="JET", version="0.11"))
-          include("test/jet.jl")
+          include(joinpath(pwd(), "test", "jet.jl"))

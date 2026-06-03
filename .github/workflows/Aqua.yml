@@ -27,4 +27,4 @@ jobs:
           Pkg.activate(; temp=true)
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.add(PackageSpec(name="Aqua", version="0.8"))
-          include("test/aqua.jl")
+          include(joinpath(pwd(), "test", "aqua.jl"))
