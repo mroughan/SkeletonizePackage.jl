@@ -1,3 +1,15 @@
+const _RE_FUNCTION_HEADER = r"^function\s+([A-Za-z_]\w*)\s*\(([^)]*)\)"
+const _RE_SHORT_FUNCTION  = r"^([A-Za-z_]\w*)\s*\(([^)]*)\)\s*="
+const _RE_TYPE_SUFFIX     = r"::.*$"
+const _RE_BLOCK_OPENER    = r"\b(for|while|if|begin|let|try|quote|do)\b"
+const _RE_LOOP_OPENER     = r"^(for|while)\b"
+const _RE_OTHER_OPENER    = r"^(if|function|begin|let|try)\b"
+const _RE_LOOP_KEYWORD    = r"\b(for|while)\b"
+const _RE_GLOBAL_KEYWORD  = r"\bglobal\b"
+const _RE_SIDE_EFFECTS    = r"\b(push!|append!|setindex!|delete!|empty!|sort!|splice!|pop!|println|print)\s*\("
+const _RE_INDEXED_ASSIGN  = r"\[[^\]]+\]\s*="
+const _RE_EXPORT_LINE     = r"^export\b"
+
 struct SourceFunction
     name::Symbol
     args::Vector{String}
@@ -13,6 +25,12 @@ struct SourceProject
     functions::Dict{Symbol,SourceFunction}
 end
 
+"""
+    _check_property(caller, kind, spec)
+
+Evaluate one `@require`/`@forbid` property against the package that `caller` belongs
+to. `kind` must be `:require` or `:forbid`; `spec` is the `Expr` captured by the macro.
+"""
 function _check_property(caller::Module, kind::Symbol, spec)
     ok = _property_holds(_source_project(caller), caller, spec)
     if kind == :require
@@ -24,11 +42,21 @@ function _check_property(caller::Module, kind::Symbol, spec)
     end
 end
 
+"""
+    _source_project(caller)
+
+Build a `SourceProject` by locating the on-disk root of the package that owns `caller`.
+"""
 function _source_project(caller::Module)
     root = _source_project_root(caller)
     return _source_project_from_path(root)
 end
 
+"""
+    _source_project_from_path(root)
+
+Read all `.jl` files under `root/src/` and construct a `SourceProject`.
+"""
 function _source_project_from_path(root::AbstractString)
     module_name = _project_name(root)
     files = Dict{String,String}()
@@ -83,11 +111,11 @@ function _source_functions(text::AbstractString)
 end
 
 function _function_header(line::AbstractString)
-    m = match(r"^function\s+([A-Za-z_]\w*)\s*\(([^)]*)\)", line)
+    m = match(_RE_FUNCTION_HEADER, line)
     if m !== nothing
         return (Symbol(m.captures[1]), _split_args(m.captures[2]))
     end
-    m = match(r"^([A-Za-z_]\w*)\s*\(([^)]*)\)\s*=", line)
+    m = match(_RE_SHORT_FUNCTION, line)
     m === nothing && return nothing
     return (Symbol(m.captures[1]), _split_args(m.captures[2]))
 end
@@ -96,7 +124,7 @@ function _split_args(raw)
     raw === nothing && return String[]
     text = strip(raw)
     isempty(text) && return String[]
-    return [strip(replace(split(arg, "="; limit=2)[1], r"::.*$" => "")) for arg in split(text, ",")]
+    return [strip(replace(split(arg, "="; limit=2)[1], _RE_TYPE_SUFFIX => "")) for arg in split(text, ",")]
 end
 
 function _collect_source_block(lines, start_i)
@@ -107,7 +135,7 @@ function _collect_source_block(lines, start_i)
         i = start_i + 1
         while i <= length(lines)
             s = strip(lines[i])
-            if startswith(s, "function ") || occursin(r"\b(for|while|if|begin|let|try|quote|do)\b", s)
+            if startswith(s, "function ") || occursin(_RE_BLOCK_OPENER, s)
                 depth += 1
             end
             if s == "end"
@@ -122,6 +150,12 @@ function _collect_source_block(lines, start_i)
     return String[], start_i
 end
 
+"""
+    _property_holds(project, caller, spec)
+
+Dispatch a property `spec` expression to the appropriate checker function and return a Bool.
+`spec` must be a `:call` `Expr` whose head names the property (e.g. `exported(:f)`).
+"""
 function _property_holds(project::SourceProject, caller::Module, spec)
     spec isa Expr && spec.head == :call || throw(ArgumentError("properties must use call syntax, for example exported(:f)"))
     name = Symbol(spec.args[1])
@@ -202,7 +236,7 @@ function _is_exported(project::SourceProject, name::Symbol)
     collecting = false
     for line in split(project.text, '\n')
         stripped = strip(line)
-        if startswith(stripped, "export ")
+        if occursin(_RE_EXPORT_LINE, stripped)
             push!(exports, stripped[length("export ")+1:end])
             collecting = endswith(stripped, ",")
         elseif collecting
@@ -246,20 +280,19 @@ end
 function _has_loop(project::SourceProject, function_name::Symbol)
     f = get(project.functions, function_name, nothing)
     f === nothing && return false
-    return occursin(r"\b(for|while)\b", f.body)
+    return occursin(_RE_LOOP_KEYWORD, f.body)
 end
 
 function _has_global(project::SourceProject, function_name::Symbol)
     f = get(project.functions, function_name, nothing)
     f === nothing && return false
-    return occursin(r"\bglobal\b", f.body)
+    return occursin(_RE_GLOBAL_KEYWORD, f.body)
 end
 
 function _has_side_effects(project::SourceProject, function_name::Symbol)
     f = get(project.functions, function_name, nothing)
     f === nothing && return false
-    return occursin(r"\b(push!|append!|setindex!|delete!|empty!|sort!|splice!|pop!|println|print)\s*\(", f.body) ||
-           occursin(r"\[[^\]]+\]\s*=", f.body)
+    return occursin(_RE_SIDE_EFFECTS, f.body) || occursin(_RE_INDEXED_ASSIGN, f.body)
 end
 
 function _is_deterministic(caller::Module, function_name::Symbol)
@@ -293,17 +326,24 @@ function _lines_of_code(project::SourceProject)
     end, split(project.text, '\n'))
 end
 
+"""
+    _nested_loop_depth(text)
+
+Return the maximum nesting depth of `for`/`while` loops in `text`, counting only
+loop-opening keywords and tracking `end` tokens via a symbol stack.
+This is a line-oriented heuristic: one keyword per line is assumed.
+"""
 function _nested_loop_depth(text::AbstractString)
     depth = 0
     maxdepth = 0
     stack = Symbol[]
     for line in split(text, '\n')
         stripped = strip(line)
-        if occursin(r"^(for|while)\b", stripped)
+        if occursin(_RE_LOOP_OPENER, stripped)
             depth += 1
             maxdepth = max(maxdepth, depth)
             push!(stack, :loop)
-        elseif occursin(r"^(if|function|begin|let|try)\b", stripped)
+        elseif occursin(_RE_OTHER_OPENER, stripped)
             push!(stack, :other)
         elseif stripped == "end" && !isempty(stack)
             top = pop!(stack)

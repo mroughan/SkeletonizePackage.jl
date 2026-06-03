@@ -25,10 +25,20 @@ The following file is a set of RULES that you MUST follow.
 
  + Use Julia style guidelines https://docs.julialang.org/en/v1/manual/style-guide/
  + Use standard Julia performance tips: https://docs.julialang.org/en/v1/manual/performance-tips/
- + Include docstrings for all exposed types and methods.
+ + Include docstrings for all exported types and methods.
  + Docstrings should include examples, with output values that can be tested.
  + Write code such that it will be easily acceptable to the Julia community.
  + Aim for high single-thread performance.
+ + Make sure any Julia-focussed repository has a suitable set of elements in .gitignore
 
+## Agents
 
+ + Warn very clearly if these instructions are in danger of falling out of context.
+ + Never alter this file.
+ 
+ 
+ 
+ 
+ 
+ 
 

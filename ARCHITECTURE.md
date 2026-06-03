@@ -252,6 +252,53 @@ assignment
 5. The visible skeleton, `RUBRIC.md`, requirements, and public tests should make
    the grading contract clear.
 
+## Security Model
+
+`SkeletonizePackage.jl` is designed for classroom use where both the teacher and
+students are trusted participants in an academic setting. It is not designed for
+running untrusted code submitted by anonymous users over the internet.
+
+### Execution isolation
+
+Reference tests and submission tests run in **separate Julia processes** spawned via
+`Base.julia_cmd()`. This means:
+
+- The grader's own module state is never contaminated by student code.
+- Module-name collisions between the reference package and the submission package are
+  avoided because each process only loads one of them.
+- A student submission that throws an uncaught exception, calls `exit()`, or enters an
+  infinite loop affects only its own process; the grader process waits and reads the
+  process exit code.
+
+Student source is loaded into the child process via `include_string`, not `eval` in the
+grader's own session. The child process has the same file-system permissions as the
+grader process, so it can read and write files — this is intentional (students need to
+be able to load their package dependencies).
+
+### Serialization
+
+Results are passed from child processes back to the grader via Julia's `Serialization`
+module written to temporary files. Julia's serialization format is not safe for
+untrusted data from a network adversary, but here the child process is started by the
+grader itself and the serialized data is written to a temp file that only the grader
+reads. There is no network boundary.
+
+### Threat model
+
+The package assumes:
+- The teacher's reference package is trusted.
+- The student's submission package is written by a registered student (not an anonymous
+  attacker) and will be run with the same OS-level permissions as the grader.
+- Grading happens on a machine or CI environment controlled by the teacher, not on a
+  shared public server.
+
+Scenarios explicitly **out of scope**:
+- Online judge / competitive programming style sandboxing.
+- Preventing a malicious student from deleting files or consuming excessive CPU/memory
+  during grading (use OS-level resource limits if needed).
+- Protecting hidden test content from a student who has OS-level read access to the
+  grader machine.
+
 ## Current Components
 
 - `annotations.jl`: annotation macros and source transformation.

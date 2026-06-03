@@ -79,6 +79,124 @@ using Test
     return reference, submission
 end
 
+@testset "property checkers" begin
+    tmp = mktempdir()
+    root = joinpath(tmp, "PropTest")
+    mkpath(joinpath(root, "src"))
+    write(joinpath(root, "Project.toml"), """
+name = "PropTest"
+uuid = "aaaaaaaa-0000-0000-0000-000000000001"
+version = "0.1.0"
+""")
+    write(joinpath(root, "src", "PropTest.jl"), """
+module PropTest
+using LinearAlgebra
+
+export foo, bar
+
+\"\"\"
+    foo(x)
+
+A documented function.
+\"\"\"
+function foo(x)
+    global _g = x
+    push!([], x)
+    for i in 1:x
+        for j in 1:i
+            x + j
+        end
+    end
+    return x
+end
+
+bar(x) = 2x
+
+end
+""")
+
+    proj = SkeletonizePackage._source_project_from_path(root)
+
+    @testset "_is_exported" begin
+        @test  SkeletonizePackage._is_exported(proj, :foo)
+        @test  SkeletonizePackage._is_exported(proj, :bar)
+        @test !SkeletonizePackage._is_exported(proj, :baz)
+    end
+
+    @testset "_has_signature" begin
+        @test  SkeletonizePackage._has_signature(proj, :foo, 1)
+        @test !SkeletonizePackage._has_signature(proj, :foo, 2)
+        @test !SkeletonizePackage._has_signature(proj, :missing_fn, 1)
+    end
+
+    @testset "_has_docstring" begin
+        @test  SkeletonizePackage._has_docstring(proj, :foo)
+        @test !SkeletonizePackage._has_docstring(proj, :bar)
+    end
+
+    @testset "_has_import" begin
+        @test  SkeletonizePackage._has_import(proj, :LinearAlgebra)
+        @test !SkeletonizePackage._has_import(proj, :DataFrames)
+    end
+
+    @testset "_calls" begin
+        @test  SkeletonizePackage._calls(proj, :foo, :push!)
+        @test !SkeletonizePackage._calls(proj, :foo, :sort!)
+        @test !SkeletonizePackage._calls(proj, :bar, :push!)
+        # project-wide search
+        @test  SkeletonizePackage._calls(proj, nothing, :push!)
+        @test !SkeletonizePackage._calls(proj, nothing, :nonexistent_fn)
+    end
+
+    @testset "_has_loop" begin
+        @test  SkeletonizePackage._has_loop(proj, :foo)
+        @test !SkeletonizePackage._has_loop(proj, :bar)
+        @test !SkeletonizePackage._has_loop(proj, :missing_fn)
+    end
+
+    @testset "_has_global" begin
+        @test  SkeletonizePackage._has_global(proj, :foo)
+        @test !SkeletonizePackage._has_global(proj, :bar)
+    end
+
+    @testset "_has_side_effects" begin
+        @test  SkeletonizePackage._has_side_effects(proj, :foo)
+        @test !SkeletonizePackage._has_side_effects(proj, :bar)
+    end
+
+    @testset "_nested_loop_depth" begin
+        @test SkeletonizePackage._nested_loop_depth(proj.text) == 2
+        @test SkeletonizePackage._nested_loop_depth("x = 1\ny = 2\n") == 0
+        @test SkeletonizePackage._nested_loop_depth("for i in 1:3\n  x = i\nend\n") == 1
+        # loops inside conditionals do not double-count
+        @test SkeletonizePackage._nested_loop_depth("if true\n  for i in 1:3\n    x = i\n  end\nend\n") == 1
+    end
+
+    @testset "_comment_count" begin
+        @test SkeletonizePackage._comment_count(proj) >= 1
+        empty_proj = SkeletonizePackage._source_project_from_path(let p = mktempdir()
+            mkpath(joinpath(p, "src"))
+            write(joinpath(p, "Project.toml"), "name = \"Empty\"\nuuid = \"aaaaaaaa-0000-0000-0000-000000000002\"\nversion = \"0.1.0\"\n")
+            write(joinpath(p, "src", "Empty.jl"), "module Empty\nend\n")
+            p
+        end)
+        @test SkeletonizePackage._comment_count(empty_proj) == 0
+    end
+
+    @testset "_lines_of_code" begin
+        @test SkeletonizePackage._lines_of_code(proj) > 0
+    end
+
+    # Edge cases: function not found returns false, not an error
+    @testset "missing function returns false" begin
+        @test !SkeletonizePackage._has_loop(proj, :totally_missing)
+        @test !SkeletonizePackage._has_global(proj, :totally_missing)
+        @test !SkeletonizePackage._has_side_effects(proj, :totally_missing)
+        @test !SkeletonizePackage._has_docstring(proj, :totally_missing)
+        @test !SkeletonizePackage._has_signature(proj, :totally_missing, 1)
+    end
+end
+
 @testset "strip_reference_annotations" begin
     src = """
 module Demo

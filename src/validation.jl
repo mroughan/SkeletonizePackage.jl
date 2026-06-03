@@ -16,6 +16,15 @@ julia> sprint(show, issue)
 "WARNING test/runtests.jl:3: no @student_test blocks found\\n  suggestion: Add visible tests."
 ```
 """
+# Maximum line distance between a @solution block and its paired @scaffolding block.
+# Chosen to be larger than a typical short function body but small enough to flag
+# solution blocks that genuinely have no corresponding student placeholder.
+const _SCAFFOLDING_PROXIMITY_LINES = 8
+
+# Patterns that indicate a scaffolding block already contains a student prompt or
+# failing placeholder, so no warning is needed.
+const _RE_SCAFFOLDING_PROMPT = r"TODO|FIXME|error\(|throw\(|\bmissing\b|unimplemented"i
+
 struct ValidationIssue
     severity::Symbol
     path::String
@@ -123,7 +132,7 @@ function validate_reference_package(reference_path::AbstractString; io::Union{No
             file in TEACHER_ONLY_FILES && continue
             path = joinpath(walkroot, file)
             rel = relroot == "." ? file : joinpath(relroot, file)
-            _validate_file!(issues, annotation_counts, root, rel, path)
+            _validate_file!(issues, annotation_counts, rel, path)
         end
     end
 
@@ -148,6 +157,12 @@ function validate_reference_package(reference_path::AbstractString; io::Union{No
     return report
 end
 
+"""
+    _validate_package_shape!(issues, root)
+
+Check that `root` contains the minimum files expected of a Julia package
+(`Project.toml`, `src/`, `test/`). Pushes `ValidationIssue`s into `issues`.
+"""
 function _validate_package_shape!(issues, root)
     isfile(joinpath(root, "Project.toml")) ||
         _push_issue!(issues, :error, "Project.toml", nothing, "missing Project.toml", "Create a normal Julia package before generating a skeleton package.")
@@ -157,7 +172,15 @@ function _validate_package_shape!(issues, root)
         _push_issue!(issues, :warning, "test", nothing, "missing test directory", "Add tests, including @student_test and optional @hidden_test blocks.")
 end
 
-function _validate_file!(issues, counts, root, rel, path)
+"""
+    _validate_file!(issues, counts, rel, path)
+
+Validate one file from the reference package. Updates `counts` for each annotation opener
+found, and pushes `ValidationIssue`s into `issues` for unsupported syntax, syntax errors
+after annotation stripping, unpaired solution blocks, and empty scaffolding prompts.
+`rel` is the path relative to the package root (used in issue messages); `path` is absolute.
+"""
+function _validate_file!(issues, counts, rel, path)
     ext = splitext(path)[2]
     text = read(path, String)
     contains_annotation = any(occursin(name, text) for name in ANNOTATION_OPENERS)
@@ -219,7 +242,7 @@ function _validate_file!(issues, counts, root, rel, path)
     end
 
     for line in solution_lines
-        if !any(abs(line - scaffolding) <= 8 for scaffolding in scaffolding_lines)
+        if !any(abs(line - scaffolding) <= _SCAFFOLDING_PROXIMITY_LINES for scaffolding in scaffolding_lines)
             _push_issue!(issues, :warning, rel, line, "@solution has no nearby @scaffolding block", "Pair each reference solution with a student-facing scaffolding block where practical.")
         end
     end
@@ -227,7 +250,7 @@ function _validate_file!(issues, counts, root, rel, path)
     for line in scaffolding_lines
         block, _ = _collect_block(lines, line)
         scaffolding_text = join(block, "\n")
-        if !occursin(r"TODO|FIXME|error\(|throw\(|missing"i, scaffolding_text)
+        if !occursin(_RE_SCAFFOLDING_PROMPT, scaffolding_text)
             _push_issue!(issues, :info, rel, line, "@scaffolding block has no obvious student prompt or failing placeholder", "Consider adding a TODO, `error(\"TODO\")`, or clear partial implementation.")
         end
     end

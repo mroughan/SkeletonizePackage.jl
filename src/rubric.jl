@@ -5,7 +5,7 @@ struct RubricItem
     points::Int
     description::String
     zero_marks::Bool
-    spec::Any
+    spec::Union{Nothing, Expr}
     path::String
     line::Int
 end
@@ -19,6 +19,12 @@ struct ReferenceTestSpec
     line::Int
 end
 
+"""
+    _parse_marks_line(stripped)
+
+Parse a single stripped source line as an `@marks` call.
+Returns a named tuple `(points, description, id)` on success, `nothing` on failure.
+"""
 function _parse_marks_line(stripped::AbstractString)
     parsed = Meta.parse(stripped; raise=false)
     parsed isa Expr && parsed.head == :macrocall || return nothing
@@ -53,51 +59,16 @@ function _parse_marks_line(stripped::AbstractString)
     return (points=Int(points), description=description, id=id)
 end
 
-function _collect_rubric(reference_path::AbstractString)
+"""
+    _collect_rubric_and_specs(reference_path)
+
+Walk `reference_path` once and collect all `RubricItem`s and `ReferenceTestSpec`s in a
+single pass. Returns `(items, specs)`. Called by `_collect_rubric` and directly by
+`grade_submission` to avoid a second identical walkdir.
+"""
+function _collect_rubric_and_specs(reference_path::AbstractString)
     root = abspath(reference_path)
     items = RubricItem[]
-    for (walkroot, dirs, files) in walkdir(root)
-        filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
-        relroot = relpath(walkroot, root)
-        for file in files
-            file in TEACHER_ONLY_FILES && continue
-            any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS) || continue
-            path = joinpath(walkroot, file)
-            rel = relroot == "." ? file : joinpath(relroot, file)
-            lines = split(read(path, String), '\n'; keepempty=true)
-            i = 1
-            while i <= length(lines)
-                stripped = strip(lines[i])
-                if stripped in ("@student_test begin", "@hidden_test begin", "@assignment_requirements begin")
-                    visibility = startswith(stripped, "@hidden_test") ? :hidden : :public
-                    block, j = _collect_block(lines, i)
-                    for (offset, line) in enumerate(block)
-                        marks = _parse_marks_line(strip(line))
-                        if marks !== nothing
-                            push!(items, RubricItem(_rubric_id(marks.id, :marks, visibility, marks.description, length(items) + 1), :marks, visibility, marks.points, marks.description, false, nothing, rel, i + offset))
-                            continue
-                        end
-                        property = _parse_property_line(strip(line))
-                        if property !== nothing
-                            push!(items, RubricItem(_rubric_id(property.id, property.kind, visibility, property.description, length(items) + 1), property.kind, visibility, property.points, property.description, property.zero_marks, property.spec, rel, i + offset))
-                            continue
-                        end
-                        reference = _parse_reference_test_line(strip(line))
-                        reference === nothing && continue
-                        push!(items, RubricItem(_rubric_id(nothing, :reference_test, visibility, reference.description, length(items) + 1), :reference_test, visibility, 0, reference.description, false, nothing, rel, i + offset))
-                    end
-                    i = j + 1
-                else
-                    i += 1
-                end
-            end
-        end
-    end
-    return items
-end
-
-function _collect_reference_tests(reference_path::AbstractString)
-    root = abspath(reference_path)
     specs = ReferenceTestSpec[]
     for (walkroot, dirs, files) in walkdir(root)
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
@@ -115,9 +86,22 @@ function _collect_reference_tests(reference_path::AbstractString)
                     visibility = startswith(stripped, "@hidden_test") ? :hidden : :public
                     block, j = _collect_block(lines, i)
                     for (offset, line) in enumerate(block)
-                        reference = _parse_reference_test_line(strip(line))
-                        reference === nothing && continue
-                        push!(specs, ReferenceTestSpec(visibility, reference.function_name, reference.input_expr, reference.description, rel, i + offset))
+                        sline = strip(line)
+                        marks = _parse_marks_line(sline)
+                        if marks !== nothing
+                            push!(items, RubricItem(_rubric_id(marks.id, :marks, visibility, marks.description, length(items) + 1), :marks, visibility, marks.points, marks.description, false, nothing, rel, i + offset))
+                            continue
+                        end
+                        property = _parse_property_line(sline)
+                        if property !== nothing
+                            push!(items, RubricItem(_rubric_id(property.id, property.kind, visibility, property.description, length(items) + 1), property.kind, visibility, property.points, property.description, property.zero_marks, property.spec, rel, i + offset))
+                            continue
+                        end
+                        reference = _parse_reference_test_line(sline)
+                        if reference !== nothing
+                            push!(items, RubricItem(_rubric_id(nothing, :reference_test, visibility, reference.description, length(items) + 1), :reference_test, visibility, 0, reference.description, false, nothing, rel, i + offset))
+                            push!(specs, ReferenceTestSpec(visibility, reference.function_name, reference.input_expr, reference.description, rel, i + offset))
+                        end
                     end
                     i = j + 1
                 else
@@ -126,7 +110,18 @@ function _collect_reference_tests(reference_path::AbstractString)
             end
         end
     end
-    return specs
+    return items, specs
+end
+
+"""
+    _collect_rubric(reference_path)
+
+Walk `reference_path` and return all `RubricItem`s. Thin wrapper around
+`_collect_rubric_and_specs` for callers that do not need the `ReferenceTestSpec`s.
+"""
+function _collect_rubric(reference_path::AbstractString)
+    items, _ = _collect_rubric_and_specs(reference_path)
+    return items
 end
 
 function _write_rubric(dst::AbstractString, items::Vector{RubricItem})
@@ -188,6 +183,12 @@ function _rubric_property_section(title::AbstractString, items::Vector{RubricIte
     return String(take!(io)) |> rstrip
 end
 
+"""
+    _parse_reference_test_line(stripped)
+
+Parse a stripped source line as a `@reference_test` declaration.
+Returns a named tuple `(function_name, input_expr, description)` on success, `nothing` on failure.
+"""
 function _parse_reference_test_line(stripped::AbstractString)
     startswith(stripped, "@reference_test ") || return nothing
     text = strip(stripped[length("@reference_test ")+1:end])
@@ -207,6 +208,12 @@ function _parse_reference_test_line(stripped::AbstractString)
     )
 end
 
+"""
+    _parse_property_line(stripped)
+
+Parse a stripped source line as a `@require` or `@forbid` declaration.
+Returns a named tuple `(kind, spec, points, zero_marks, description, id)` on success, `nothing` on failure.
+"""
 function _parse_property_line(stripped::AbstractString)
     parsed = Meta.parse(stripped; raise=false)
     parsed isa Expr && parsed.head == :macrocall || return nothing

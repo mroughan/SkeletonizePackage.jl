@@ -98,7 +98,7 @@ function GradeResult(passed::Bool, exitcode::Int, stdout::String, stderr::String
     awarded = Dict{String, Int}()
     total = 0
     header, row = _grade_csv(["student_id", "status", "total"], ["", passed ? "passed" : "failed", string(passed ? total : 0)])
-    report = _student_grade_report("", passed, exitcode, RubricItem[], ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], awarded, possible, passed ? total : 0, total, passed, false, stdout, stderr)
+    report = _student_grade_report("", passed, exitcode, RubricItem[], ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], awarded, possible, passed ? total : 0, total, stdout, stderr)
     return GradeResult(passed, exitcode, stdout, stderr, "", RubricItem[], awarded, possible, passed ? total : 0, total, report, header, row, ReferenceTestResult[], PropertyCheckResult[], CriterionResult[])
 end
 
@@ -172,8 +172,7 @@ function grade_submission(reference_path::AbstractString, submission_path::Abstr
     selected_test_path = test_path === nothing ? joinpath(submission_path, "test", "runtests.jl") : test_path
     isfile(selected_test_path) || throw(ArgumentError("test_path is not a file: $selected_test_path"))
 
-    rubric = _collect_rubric(reference_path)
-    reference_specs = _collect_reference_tests(reference_path)
+    rubric, reference_specs = _collect_rubric_and_specs(reference_path)
     test_expr = "include($(repr(abspath(selected_test_path))))"
     cmd = `$(Base.julia_cmd()) --project=$(abspath(submission_path)) -e $test_expr`
     stdout_path = tempname()
@@ -197,7 +196,7 @@ function grade_submission(reference_path::AbstractString, submission_path::Abstr
         header_values = vcat(["student_id", "status"], categories, ["total"])
         row_values = vcat([String(student_id), passed ? "passed" : "failed"], [string(get(awarded, category, 0)) for category in categories], [string(total_awarded)])
         header, row = _grade_csv(header_values, row_values)
-        report = _student_grade_report(String(student_id), passed, proc.exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, behavioral_passed, zeroed, stdout, stderr)
+        report = _student_grade_report(String(student_id), passed, proc.exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, stdout, stderr)
         result = GradeResult(passed, proc.exitcode, stdout, stderr, String(student_id), rubric, awarded, possible, total_awarded, total_possible, report, header, row, reference_results, property_results, criterion_results)
         report_path === nothing || write(report_path, report)
         csv_path === nothing || _write_grade_csv(csv_path, header, row; append=append_csv)
@@ -277,21 +276,27 @@ function _evaluate_reference_spec(package_path::AbstractString, spec::ReferenceT
     end
 end
 
+"""
+    _reference_eval_script()
+
+Return the source text of a self-contained Julia script that is written to a temp file
+and run in a fresh process by `_evaluate_reference_spec`. The script loads the target
+package via `include_string` (stripping annotations first), evaluates the named function
+on each generated input, and serializes a `Vector{NamedTuple}` of results to `output_path`.
+
+Running in a separate process avoids module-name collisions between the reference package
+and the submission package, and prevents student code from affecting the grader's state.
+"""
 function _reference_eval_script()
     return raw"""
 using Serialization
+using TOML
 
-function _project_name(path)
-    text = read(joinpath(path, "Project.toml"), String)
-    for line in split(text, '\n')
-        stripped = strip(line)
-        startswith(stripped, "name") || continue
-        parts = split(stripped, "="; limit=2)
-        length(parts) == 2 || continue
-        parsed = Meta.parse(strip(parts[2]))
-        parsed isa String && return parsed
-    end
-    error("Project.toml has no name")
+function _project_name(path::AbstractString)
+    project = joinpath(path, "Project.toml")
+    isfile(project) || error("Project.toml not found in " * path)
+    data = TOML.parsefile(project)
+    return String(get(data, "name", basename(path)))
 end
 
 function _call_with_input(f, input)
@@ -299,26 +304,26 @@ function _call_with_input(f, input)
     return f(input)
 end
 
-function _collect_block(lines, start_i)
+function _collect_block(lines::AbstractVector, start_i::Int)
     body = String[]
     depth = 1
     i = start_i + 1
     while i <= length(lines)
-        stripped = strip(lines[i])
-        if endswith(stripped, " begin") || occursin(r"\bbegin\b", stripped)
-            depth += count(==("begin"), split(stripped))
+        s = strip(lines[i])
+        if endswith(s, " begin") || occursin(r"\bbegin\b", s)
+            depth += count(==("begin"), split(s))
         end
-        if stripped == "end"
+        if s == "end"
             depth -= 1
             depth == 0 && return body, i
         end
         push!(body, lines[i])
         i += 1
     end
-    error("unterminated annotation block")
+    error("unterminated annotation block beginning at line " * string(start_i))
 end
 
-function _keep_body(macro_name, mode)
+function _keep_body(macro_name::AbstractString, mode::AbstractString)
     if mode == "student"
         return macro_name in ("@scaffolding", "@student_test")
     else
@@ -326,7 +331,7 @@ function _keep_body(macro_name, mode)
     end
 end
 
-function _loadable_source(text, mode)
+function _loadable_source(text::AbstractString, mode::AbstractString)
     lines = split(text, '\n'; keepempty=true)
     out = String[]
     i = 1
@@ -422,7 +427,7 @@ function _awarded_points_by_category(rubric::Vector{RubricItem}, criterion_resul
     return awarded
 end
 
-function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, behavioral_passed::Bool, zeroed::Bool, stdout::String, stderr::String)
+function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, stdout::String, stderr::String)
     io = IOBuffer()
     println(io, "# Student Feedback Report")
     println(io)
