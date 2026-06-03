@@ -5,6 +5,26 @@ using Test
 _same_path(a, b) = rstrip(abspath(a), ['/', '\\']) == rstrip(abspath(b), ['/', '\\'])
 _deterministic_probe(x) = 2x
 
+function _capture_main(args)
+    out_path = tempname()
+    err_path = tempname()
+    try
+        code = open(out_path, "w") do out
+            open(err_path, "w") do err
+                redirect_stdout(out) do
+                    redirect_stderr(err) do
+                        SkeletonizePackage.main(copy(args))
+                    end
+                end
+            end
+        end
+        return code, read(out_path, String), read(err_path, String)
+    finally
+        rm(out_path; force=true)
+        rm(err_path; force=true)
+    end
+end
+
 function _write_grade_fixture!(root; submission_name="Submission", passing=true, forbidden_import=false)
     reference = joinpath(root, "Reference")
     submission = joinpath(root, submission_name)
@@ -77,6 +97,149 @@ using Test
 @test answer() == 42
 """)
     return reference, submission
+end
+
+@testset "cli entry point" begin
+    tmp = mktempdir()
+
+    code, out, err = _capture_main(String[])
+    @test code == 1
+    @test isempty(out)
+    @test occursin("Usage:", err)
+
+    code, _, err = _capture_main(["unknown"])
+    @test code == 1
+    @test occursin("Usage:", err)
+
+    assignment = create_assignment(joinpath(tmp, "CliReference"); ai_policy=:recorded)
+    code, out, err = _capture_main(["validate", assignment])
+    @test code == 0
+    @test occursin("Validation report", out)
+    @test isempty(err)
+
+    bad = joinpath(tmp, "BadReference")
+    mkpath(joinpath(bad, "src"))
+    write(joinpath(bad, "Project.toml"), """
+name = "BadReference"
+uuid = "aaaaaaaa-0000-0000-0000-000000000010"
+version = "0.1.0"
+""")
+    write(joinpath(bad, "src", "BadReference.jl"), """
+module BadReference
+using SkeletonizePackage
+f() = @solution begin
+    1
+end
+end
+""")
+    code, out, _ = _capture_main(["validate", bad])
+    @test code == 2
+    @test occursin("annotation appears inline", out)
+
+    direct_skeleton = joinpath(tmp, "DirectSkeleton")
+    code, out, err = _capture_main(["generate", assignment, direct_skeleton, "--force", "--no-validate", "--ai-policy", "allowed"])
+    @test code == 0
+    @test occursin(direct_skeleton, out)
+    @test isfile(joinpath(direct_skeleton, "AGENTS.md"))
+    @test occursin("AI Agent Use Is Allowed", read(joinpath(direct_skeleton, "AGENTS.md"), String))
+    @test isempty(err)
+
+    config_skeleton = joinpath(tmp, "ConfigSkeleton")
+    config = SkeletonizePackage.read_assignment_config(joinpath(assignment, "SkeletonizePackage.inc"))
+    config_path = joinpath(tmp, "CliConfig.inc")
+    write(config_path, """
+---
+[assignment]
+reference_path = "$(assignment)"
+skeleton_path = "$(config_skeleton)"
+mode = "$(String(config.mode))"
+force = false
+validate = true
+instructions_path = "$(config.instructions_path)"
+ai_policy = "recorded"
+---
+config
+assignment
+""")
+    code, out, _ = _capture_main(["generate", "--config", config_path, "--force", "--ai-policy", "forbidden"])
+    @test code == 0
+    @test occursin(config_skeleton, out)
+    @test occursin("AI Agents Are Forbidden", read(joinpath(config_skeleton, "AGENTS.md"), String))
+
+    code, _, err = _capture_main(["generate", "--config"])
+    @test code == 1
+    @test occursin("--config requires a path", err)
+
+    code, _, err = _capture_main(["generate", assignment])
+    @test code == 1
+    @test occursin("Usage:", err)
+
+    init_path = joinpath(tmp, "CliInit")
+    code, out, _ = _capture_main(["init", init_path, "--name", "CliInitCustom", "--force", "--ai-policy", "forbidden"])
+    @test code == 0
+    @test occursin(init_path, out)
+    @test isfile(joinpath(init_path, "Project.toml"))
+    init_config = SkeletonizePackage.read_assignment_config(joinpath(init_path, "SkeletonizePackage.inc"))
+    @test init_config.ai_policy == :forbidden
+
+    code, _, err = _capture_main(["create", joinpath(tmp, "BadPolicy"), "--ai-policy", "mystery"])
+    @test code == 1
+    @test occursin("ai_policy must be forbidden, recorded, or allowed", err)
+
+    reference, passing_submission = _write_grade_fixture!(tmp; submission_name="CliPassing", passing=true)
+    code, out, _ = _capture_main(["grade", reference, passing_submission, "--student-id", "cli-stdout"])
+    @test code == 0
+    @test occursin("Student Feedback Report", out)
+    @test occursin("cli-stdout", out)
+
+    report_path = joinpath(tmp, "cli-report.md")
+    html_path = joinpath(tmp, "cli-report.html")
+    gradescope_path = joinpath(tmp, "cli-gradescope.json")
+    csv_path = joinpath(tmp, "cli-marks.csv")
+    code, out, _ = _capture_main([
+        "grade",
+        reference,
+        passing_submission,
+        "--student-id",
+        "cli-files",
+        "--report",
+        report_path,
+        "--html",
+        html_path,
+        "--gradescope",
+        gradescope_path,
+        "--csv",
+        csv_path,
+        "--csv-format",
+        "canvas",
+        "--replace-csv",
+        "--test-timeout",
+        "60",
+        "--ref-timeout",
+        "20",
+    ])
+    @test code == 0
+    @test occursin(report_path, out)
+    @test occursin(html_path, out)
+    @test occursin(gradescope_path, out)
+    @test occursin(csv_path, out)
+    @test startswith(read(csv_path, String), "SIS Login ID")
+    @test occursin("cli-files", read(report_path, String))
+    @test occursin("<html", read(html_path, String))
+    @test occursin("\"score\"", read(gradescope_path, String))
+
+    _, failing_submission = _write_grade_fixture!(tmp; submission_name="CliFailing", passing=false)
+    code, out, _ = _capture_main(["grade", reference, failing_submission, "--student-id", "cli-fail"])
+    @test code == 2
+    @test occursin("Status: failed", out)
+
+    code, _, err = _capture_main(["grade", reference, passing_submission, "--csv-format"])
+    @test code == 1
+    @test occursin("--csv-format requires a value", err)
+
+    code, _, err = _capture_main(["init", joinpath(tmp, "NoName"), "--name"])
+    @test code == 1
+    @test occursin("--name requires a value", err)
 end
 
 @testset "property checkers" begin
