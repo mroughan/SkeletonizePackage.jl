@@ -1,6 +1,6 @@
-# SkeletonPackages.jl
+# SkeletonizePackage.jl
 
-`SkeletonPackages.jl` transforms an annotated teacher reference package into a
+`SkeletonizePackage.jl` transforms an annotated teacher reference package into a
 student skeleton package. Students complete the skeleton to create their
 submission package.
 
@@ -14,7 +14,7 @@ early.
 Start by scaffolding a teacher reference package:
 
 ```julia
-using SkeletonPackages
+using SkeletonizePackage
 
 create_assignment("MyAssignment"; ai_policy=:recorded)
 ```
@@ -22,7 +22,7 @@ create_assignment("MyAssignment"; ai_policy=:recorded)
 The scaffold is step 0 of the pipeline. It creates a normal Julia package with
 example annotations, public and hidden tests, rubric entries, source-property
 requirements, a reference-oracle test, exercise notes, and a
-`SkeletonPackages.inc` file. Teachers then edit those files into the real
+`SkeletonizePackage.inc` file. Teachers then edit those files into the real
 assignment.
 
 The reference package contains annotations such as:
@@ -32,7 +32,7 @@ function mysort(xs)
     @solution begin
         return sort(xs)
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: implement mysort")
     end
 end
@@ -42,7 +42,7 @@ Validate it, generate a skeleton, let the student work from that skeleton, and
 grade the resulting submission:
 
 ```julia
-using SkeletonPackages
+using SkeletonizePackage
 
 create_assignment("MyAssignment"; ai_policy=:recorded)
 
@@ -65,7 +65,7 @@ result = grade_submission(
 )
 ```
 
-Skeleton packages keep `@starter` and `@student_test` bodies. Reference packages
+Skeleton packages keep `@scaffolding` and `@student_test` bodies. Reference packages
 keep `@solution`, `@student_test`, and `@hidden_test` bodies. Generated skeleton
 packages also include `STUDENT_INSTRUCTIONS.md`, a generic guide for students
 who are new to Julia package workflows, and `RUBRIC.md`, the student-facing
@@ -76,7 +76,7 @@ CSV row that can be appended to a class marks file.
 ## Example 1 - Very Thin Example
 
 `examples/ThinAssignment` shows the smallest useful pattern: one exported
-function, one reference solution, one starter placeholder, one public test, and
+function, one reference solution, one scaffolding placeholder, one public test, and
 one hidden test. Tests can also carry `@marks` lines that become the generated
 skeleton `RUBRIC.md`.
 
@@ -85,7 +85,7 @@ function double_it(x)
     @solution begin
         return 2x
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: implement double_it")
     end
 end
@@ -97,7 +97,7 @@ configuration or richer testing concerns.
 Run the complete thin pipeline from the repository root:
 
 ```julia
-using SkeletonPackages
+using SkeletonizePackage
 
 reference = "examples/ThinAssignment"
 skeleton = "ThinAssignmentSkeleton"
@@ -137,8 +137,8 @@ end
 A typical teacher workflow is:
 
 ```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate examples/SortingAssignment
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force
 ```
 
 Students work in `SortingAssignmentSkeleton`, run their public tests with:
@@ -150,7 +150,7 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 After they submit a completed package, the teacher can grade it:
 
 ```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
 ```
 
 The grading step produces `s123-feedback.md` for the student and appends a row
@@ -158,7 +158,7 @@ to `marks.csv` for the class marks spreadsheet.
 
 ## Example 3 - Configuration Options
 
-`examples/ConfiguredAssignment` includes a `SkeletonPackages.inc` file. The
+`examples/ConfiguredAssignment` includes a `SkeletonizePackage.inc` file. The
 configuration lives in the INC metadata block, using the INI-style metadata
 syntax defined by INCspec and read/written by IncCSV.jl.
 
@@ -180,9 +180,9 @@ assignment
 Generate from the config file with:
 
 ```julia
-using SkeletonPackages
+using SkeletonizePackage
 
-config = read_assignment_config("examples/ConfiguredAssignment/SkeletonPackages.inc")
+config = read_assignment_config("examples/ConfiguredAssignment/SkeletonizePackage.inc")
 generate_skeleton_package(config; io=stdout)
 ```
 
@@ -236,3 +236,12 @@ outputs. A passing report contains entries like:
 
 - [hidden] `clamp01` input 1 passed: matched reference output
 ```
+
+## Example 5 - Structural and Shortcut Policies
+
+`examples/RecursiveAssignment` demonstrates structural requirements such as
+requiring recursion and marking a docstring separately from behavioural tests.
+
+`examples/ShortcutPolicyAssignment` demonstrates a stricter AI/package policy
+and a zero-mark gate for a forbidden shortcut package. These examples are useful
+starting points for assignments where the method matters, not just the output.

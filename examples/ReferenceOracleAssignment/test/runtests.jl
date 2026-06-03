@@ -1,5 +1,5 @@
 using ReferenceOracleAssignment
-using SkeletonPackages
+using SkeletonizePackage
 using Test
 
 @assignment_requirements begin

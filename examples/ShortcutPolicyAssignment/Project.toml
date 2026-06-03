@@ -1,5 +1,5 @@
-name = "ConfiguredAssignment"
-uuid = "640a9757-76da-4354-9513-60d612bf44c9"
+name = "ShortcutPolicyAssignment"
+uuid = "f09d7db9-ec7c-46bd-898c-99acfc7df4e4"
 version = "0.1.0"
 
 [deps]

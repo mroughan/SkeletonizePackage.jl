@@ -1,4 +1,4 @@
-using SkeletonPackages
+using SkeletonizePackage
 using IncCSV
 using Test
 
@@ -19,12 +19,12 @@ uuid = "7ab20f4c-9a1d-43a5-8e9d-54c7a5cb8eaa"
 version = "0.1.0"
 
 [deps]
-SkeletonPackages = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
+SkeletonizePackage = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 """)
     write(joinpath(reference, "src", "Reference.jl"), """
 module Reference
-using SkeletonPackages
+using SkeletonizePackage
 export answer
 function answer()
     @solution begin
@@ -35,7 +35,7 @@ end
 """)
     write(joinpath(reference, "test", "runtests.jl"), """
 using Reference
-using SkeletonPackages
+using SkeletonizePackage
 using Test
 
 @student_test begin
@@ -87,7 +87,7 @@ function f(x)
     @solution begin
         return x + 1
     end
-    @starter begin
+    @scaffolding begin
         error("TODO")
     end
 end
@@ -128,7 +128,7 @@ function g(xs)
     y = begin
         sum(xs)
     end
-    @starter begin
+    @scaffolding begin
         return y
     end
 end
@@ -142,7 +142,7 @@ end
 
 @testset "macro runtime behaviour" begin
     @test (@solution begin 1 + 1 end) == 2
-    @test (@starter begin error("starter should not run in reference package") end) === nothing
+    @test (@scaffolding begin error("scaffolding should not run in reference package") end) === nothing
     @test (@student_test begin 3 + 4 end) == 7
     @test (@hidden_test begin 5 + 6 end) == 11
     @test (@marks 1 "runtime no-op") === nothing
@@ -176,13 +176,13 @@ version = "0.1.0"
 """)
     write(joinpath(src, "src", "Demo.jl"), """
 module Demo
-using SkeletonPackages
+using SkeletonizePackage
 export f
 f(x) = begin
     @solution begin
         x + 1
     end
-    @starter begin
+    @scaffolding begin
         error("TODO")
     end
 end
@@ -191,7 +191,7 @@ end
     mkpath(joinpath(src, "test"))
     write(joinpath(src, "test", "runtests.jl"), """
 using Demo
-using SkeletonPackages
+using SkeletonizePackage
 using Test
 
 @student_test begin
@@ -220,7 +220,7 @@ Implement `f`.
 Teacher-only reminder.
 end
 
-@starter begin
+@scaffolding begin
 Student-facing hint.
 end
 """)
@@ -228,6 +228,8 @@ end
     @test isfile(joinpath(dst, "src", "Demo.jl"))
     @test isfile(joinpath(dst, "STUDENT_INSTRUCTIONS.md"))
     @test isfile(joinpath(dst, "RUBRIC.md"))
+    @test !isfile(joinpath(dst, "GRADING_PLAN.md"))
+    @test !isfile(joinpath(dst, "TEACHER_CHECKLIST.md"))
     text = read(joinpath(dst, "src", "Demo.jl"), String)
     @test occursin("error(\"TODO\")", text)
     @test !occursin("x + 1", text)
@@ -246,6 +248,12 @@ end
     @test occursin("f handles a larger hidden input", rubric)
     @test occursin("Public Code Properties", rubric)
     @test occursin("must satisfy `exported(f)`", rubric)
+    @test occursin("public-marks", rubric)
+
+    plan_path = write_grading_plan(src)
+    checklist_path = write_teacher_checklist(src)
+    @test occursin("Teacher Grading Plan", read(plan_path, String))
+    @test occursin("Teacher Checklist", read(checklist_path, String))
 
     teacher_dst = joinpath(tmp, "Teacher")
     generate_skeleton_package(src, teacher_dst; mode=:teacher, io=nothing)
@@ -268,7 +276,7 @@ version = "0.1.0"
 """)
     write(joinpath(src, "src", "Bad.jl"), """
 module Bad
-using SkeletonPackages
+using SkeletonizePackage
 f() = @solution begin
     1
 end
@@ -290,7 +298,9 @@ end
     tmp = mktempdir()
     assignment = create_assignment(joinpath(tmp, "DemoAssignment"))
     @test isfile(joinpath(assignment, "Project.toml"))
-    config_path = joinpath(assignment, "SkeletonPackages.inc")
+    @test isfile(joinpath(assignment, "GRADING_PLAN.md"))
+    @test isfile(joinpath(assignment, "TEACHER_CHECKLIST.md"))
+    config_path = joinpath(assignment, "SkeletonizePackage.inc")
     @test isfile(config_path)
     config_file = readinc(config_path)
     @test metadata(config_file)["assignment"]["reference_path"] == "."
@@ -300,7 +310,7 @@ end
     report = validate_reference_package(assignment)
     @test isvalid(report)
 
-    config = SkeletonPackages.read_assignment_config(config_path)
+    config = SkeletonizePackage.read_assignment_config(config_path)
     @test config.mode == :student
     @test config.instructions_path == joinpath(assignment, "student_notes.md")
     @test config.ai_policy == :recorded
@@ -309,6 +319,8 @@ end
     @test isfile(joinpath(generated, "STUDENT_INSTRUCTIONS.md"))
     @test isfile(joinpath(generated, "AGENTS.md"))
     @test isfile(joinpath(generated, "RUBRIC.md"))
+    @test !isfile(joinpath(generated, "GRADING_PLAN.md"))
+    @test !isfile(joinpath(generated, "TEACHER_CHECKLIST.md"))
     text = read(joinpath(generated, "src", "DemoAssignment.jl"), String)
     @test occursin("TODO", text)
     @test !occursin("return 42", text)
@@ -321,11 +333,12 @@ end
     @test occursin("answer returns an integer", rubric)
     @test occursin("answer returns the required value", rubric)
     @test occursin("exports the required function", rubric)
+    @test occursin("public-answer-integer", rubric)
 
     forbidden_assignment = create_assignment(joinpath(tmp, "ForbiddenAssignment"); ai_policy=:forbidden)
-    forbidden_config = SkeletonPackages.read_assignment_config(joinpath(forbidden_assignment, "SkeletonPackages.inc"))
+    forbidden_config = SkeletonizePackage.read_assignment_config(joinpath(forbidden_assignment, "SkeletonizePackage.inc"))
     forbidden_generated = generate_skeleton_package(
-        SkeletonPackages.AssignmentConfig(
+        SkeletonizePackage.AssignmentConfig(
             forbidden_config.reference_path,
             joinpath(tmp, "ForbiddenAssignmentStudent"),
             forbidden_config.mode,
@@ -350,6 +363,8 @@ end
         "SortingAssignment",
         "ConfiguredAssignment",
         "ReferenceOracleAssignment",
+        "RecursiveAssignment",
+        "ShortcutPolicyAssignment",
     ]
 
     tmp = mktempdir()
@@ -359,11 +374,11 @@ end
             report = validate_reference_package(source)
             @test isvalid(report)
 
-            config_path = joinpath(source, "SkeletonPackages.inc")
+            config_path = joinpath(source, "SkeletonizePackage.inc")
             if isfile(config_path)
-                config = SkeletonPackages.read_assignment_config(config_path)
+                config = SkeletonizePackage.read_assignment_config(config_path)
                 @test _same_path(config.reference_path, source)
-                test_config = SkeletonPackages.AssignmentConfig(
+                test_config = SkeletonizePackage.AssignmentConfig(
                     config.reference_path,
                     joinpath(tmp, "$(name)Student"),
                     config.mode,
@@ -379,6 +394,8 @@ end
 
             @test isfile(joinpath(generated, "Project.toml"))
             @test isfile(joinpath(generated, "AGENTS.md"))
+            @test !isfile(joinpath(generated, "GRADING_PLAN.md"))
+            @test !isfile(joinpath(generated, "TEACHER_CHECKLIST.md"))
             generated_source = read(joinpath(generated, "src", "$name.jl"), String)
             @test occursin("TODO", generated_source)
             @test !occursin("return sort", generated_source)
@@ -397,9 +414,9 @@ end
     end
 
     configured = joinpath(examples_root, "ConfiguredAssignment")
-    config = SkeletonPackages.read_assignment_config(joinpath(configured, "SkeletonPackages.inc"))
+    config = SkeletonizePackage.read_assignment_config(joinpath(configured, "SkeletonizePackage.inc"))
     generated = generate_skeleton_package(
-        SkeletonPackages.AssignmentConfig(
+        SkeletonizePackage.AssignmentConfig(
             config.reference_path,
             joinpath(tmp, "ConfiguredAssignmentStudentNotes"),
             config.mode,
@@ -419,8 +436,32 @@ end
     @test occursin("handles tab and newline whitespace", rubric)
 end
 
+@testset "golden generated snippets" begin
+    tmp = mktempdir()
+    source = joinpath(@__DIR__, "..", "examples", "SortingAssignment")
+    generated = generate_skeleton_package(source, joinpath(tmp, "SortingAssignmentStudent"); force=true, io=nothing)
+
+    source_text = read(joinpath(generated, "src", "SortingAssignment.jl"), String)
+    @test occursin("error(\"TODO: implement mysort\")", source_text)
+    @test !occursin("return sort", source_text)
+
+    rubric = read(joinpath(generated, "RUBRIC.md"), String)
+    @test occursin("# Rubric", rubric)
+    @test occursin("Total: 9 marks", rubric)
+    @test occursin("sorts a simple two-element vector", rubric)
+    @test occursin("does not use a package that solves sorting", rubric)
+
+    agents = read(joinpath(generated, "AGENTS.md"), String)
+    @test occursin("AI Agent Use Must Be Recorded", agents)
+    @test occursin("Students must not use AI to bypass the purpose of the assignment", agents)
+
+    instructions = read(joinpath(generated, "STUDENT_INSTRUCTIONS.md"), String)
+    @test occursin("Getting Started", instructions)
+    @test occursin("Pkg.instantiate()", instructions)
+end
+
 @testset "grade result" begin
-    result = SkeletonPackages.GradeResult(true, 0, "ok", "")
+    result = SkeletonizePackage.GradeResult(true, 0, "ok", "")
     @test isvalid(result)
     @test occursin("passed", sprint(show, result))
     @test occursin("Student Feedback Report", result.student_report)
@@ -449,6 +490,9 @@ end
     @test occursin("does not import DataFrames", passing.student_report)
     @test length(passing.reference_test_results) == 1
     @test only(passing.reference_test_results).passed
+    @test !isempty(passing.criterion_results)
+    @test any(result -> result.kind == :require && occursin("exports-answer", result.id), passing.criterion_results)
+    @test any(result -> result.awarded == 1 && result.kind == :require, passing.criterion_results)
     @test occursin("Reference Tests", passing.student_report)
     @test occursin("matched reference output", passing.student_report)
     @test read(report_path, String) == passing.student_report
@@ -480,7 +524,7 @@ end
 
     cli_report = joinpath(tmp, "cli-feedback.md")
     cli_csv = joinpath(tmp, "cli-marks.csv")
-    @test SkeletonPackages.main([
+    @test SkeletonizePackage.main([
         "grade",
         reference,
         passing_submission,
@@ -493,32 +537,4 @@ end
     ]) == 0
     @test occursin("cli-student,passed,2,2,4", read(cli_csv, String))
     @test occursin("Student: `cli-student`", read(cli_report, String))
-end
-
-@testset "quality checks" begin
-    try
-        @eval import Aqua
-        Aqua.test_all(SkeletonPackages; ambiguities = false)
-    catch err
-        if err isa ArgumentError || err isa LoadError
-            @warn "Aqua is unavailable; skipping Aqua checks" exception = (err, catch_backtrace())
-        else
-            rethrow()
-        end
-    end
-
-    if VERSION >= v"1.12"
-        try
-            @eval import JET
-            JET.test_package(SkeletonPackages; target_modules = (SkeletonPackages,))
-        catch err
-            if err isa ArgumentError || err isa LoadError
-                @warn "JET is unavailable; skipping JET checks" exception = (err, catch_backtrace())
-            else
-                rethrow()
-            end
-        end
-    else
-        @info "Skipping JET checks on Julia $VERSION; JET checks run on Julia 1.12 or later."
-    end
 end

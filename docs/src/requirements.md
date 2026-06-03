@@ -8,8 +8,8 @@ block:
 ```julia
 @assignment_requirements begin
     @require exported(fib)
-    @require signature(fib, 1) marks=1 "has the required one-argument interface"
-    @require docstring(fib) marks=1 "documents the public function"
+    @require signature(fib, 1) marks=1 id="fib-signature" "has the required one-argument interface"
+    @require docstring(fib) marks=1 id="fib-docstring" "documents the public function"
     @require comments(min=2)
     @require deterministic(fib)
 
@@ -30,13 +30,18 @@ Required and forbidden properties can carry their own marks:
 
 ```julia
 @assignment_requirements begin
-    @require docstring(fib) marks=1 "documents fib"
-    @forbid calls(fib, factorial) marks=2 "implements fib directly"
+    @require docstring(fib) marks=1 id="fib-docstring" "documents fib"
+    @forbid calls(fib, factorial) marks=2 id="fib-no-factorial" "implements fib directly"
 end
 ```
 
 Those marks are included in the generated `RUBRIC.md` and in the grading CSV.
 They are awarded only when the property passes.
+
+Add `id="..."` to `@marks`, `@require`, or `@forbid` when you want a stable
+criterion identifier. IDs appear in `RUBRIC.md`, `GRADING_PLAN.md`, and student
+feedback reports. If an ID is omitted, `SkeletonizePackage.jl` generates one from
+the visibility, criterion kind, line order, and description.
 
 A property can also be a whole-assignment gate:
 

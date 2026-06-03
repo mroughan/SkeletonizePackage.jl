@@ -1,6 +1,6 @@
 module ConfiguredAssignment
 
-using SkeletonPackages
+using SkeletonizePackage
 
 export normalize_name
 
@@ -13,7 +13,7 @@ function normalize_name(name)
     @solution begin
         return lowercase(strip(name))
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: trim whitespace and lowercase the name")
     end
 end

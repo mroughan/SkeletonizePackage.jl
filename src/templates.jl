@@ -4,8 +4,8 @@
 Create a small annotated teacher reference package template.
 
 The template includes `Project.toml`, `README.md`, `src/`, `test/`,
-`student_notes.md`, and a `SkeletonPackages.inc` that can be used with
-`generate_skeleton_package`. It includes simple examples of solution/starter
+`student_notes.md`, and a `SkeletonizePackage.inc` that can be used with
+`generate_skeleton_package`. It includes simple examples of solution/scaffolding
 blocks, public and hidden tests, rubric marks, code-property requirements, a
 reference test, student instructions, and the generated `AGENTS.md` policy.
 
@@ -17,7 +17,7 @@ julia> reference = create_assignment("MyAssignment"; force=true);
 julia> basename(reference)
 "MyAssignment"
 
-julia> isfile(joinpath(reference, "SkeletonPackages.inc"))
+julia> isfile(joinpath(reference, "SkeletonizePackage.inc"))
 true
 
 julia> isfile(joinpath(reference, "test", "runtests.jl"))
@@ -41,30 +41,30 @@ uuid = "$uuid"
 version = "0.1.0"
 
 [deps]
-SkeletonPackages = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
+SkeletonizePackage = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 """)
     write(joinpath(root, "README.md"), """
 # $module_name Reference Package
 
 This is the teacher reference package. Edit this package first, then generate
-the student skeleton package with `SkeletonPackages.jl`.
+the student skeleton package with `SkeletonizePackage.jl`.
 
 The files show the main features:
 
 - `src/$module_name.jl` contains teacher solution code for the reference package
-  and starter code for the student skeleton.
+  and scaffolding code for the student skeleton.
 - `test/runtests.jl` contains public student tests, hidden teacher tests,
   rubric entries, source requirements, forbidden-source checks, and a hidden
   reference-oracle test.
 - `student_notes.md` is appended to the generated `STUDENT_INSTRUCTIONS.md`.
-- `SkeletonPackages.inc` configures skeleton generation, including the
+- `SkeletonizePackage.inc` configures skeleton generation, including the
   generated `AGENTS.md` AI-use policy.
 """)
     write(joinpath(root, "src", "$module_name.jl"), """
 module $module_name
 
-using SkeletonPackages
+using SkeletonizePackage
 
 export answer
 
@@ -77,7 +77,7 @@ function answer()
     @solution begin
         return 42
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: implement answer")
     end
 end
@@ -86,23 +86,23 @@ end
 """)
     write(joinpath(root, "test", "runtests.jl"), """
 using $module_name
-using SkeletonPackages
+using SkeletonizePackage
 using Test
 
 @student_test begin
-    @marks 1 "answer returns an integer"
+    @marks 1 "answer returns an integer" id="public-answer-integer"
     @test answer() isa Integer
 end
 
 @hidden_test begin
-    @marks 2 "answer returns the required value"
+    @marks 2 "answer returns the required value" id="hidden-answer-value"
     @test answer() == 42
     @reference_test answer generator=[()]
 end
 
 @assignment_requirements begin
-    @require exported(answer) marks=1 "exports the required function"
-    @require docstring(answer) marks=1 "documents the required function"
+    @require exported(answer) marks=1 id="interface-answer-exported" "exports the required function"
+    @require docstring(answer) marks=1 id="style-answer-docstring" "documents the required function"
     @forbid imports(DataFrames) zero_marks=true "does not use a shortcut package"
 end
 """)
@@ -115,7 +115,7 @@ For example, describe the problem, the functions students should implement, any
 restrictions on allowed Julia features or packages, and what they should submit.
 """)
     writeinc(
-        joinpath(root, "SkeletonPackages.inc"),
+        joinpath(root, "SkeletonizePackage.inc"),
         [(config="assignment",)];
         metadata=Dict(
             "assignment" => Dict(
@@ -129,6 +129,8 @@ restrictions on allowed Julia features or packages, and what they should submit.
             ),
         ),
     )
+    write_grading_plan(root)
+    write_teacher_checklist(root)
     return root
 end
 
@@ -145,7 +147,7 @@ function _write_student_instructions(dst::AbstractString; instructions_path::Uni
 # Getting Started with `$package_name`
 
 This is a Julia package skeleton for an assignment. Your job is to fill in the
-starter code, run the tests, and submit the completed package as instructed by
+scaffolding code, run the tests, and submit the completed package as instructed by
 your teacher.
 
 ## Package Layout
@@ -346,6 +348,96 @@ function _exercise_instructions(instructions_path::Union{Nothing, AbstractString
 
 $(rstrip(transformed))
 """
+end
+
+"""
+    write_grading_plan(reference_path; plan_path=joinpath(reference_path, "GRADING_PLAN.md"), items=nothing)
+
+Write a teacher-facing Markdown grading plan for a reference package.
+
+The plan includes stable criterion IDs, public and hidden criteria, code
+property checks, zero-mark gates, and source locations. It is teacher-only and
+is not copied into generated student skeletons.
+"""
+function write_grading_plan(reference_path::AbstractString; plan_path::AbstractString=joinpath(reference_path, "GRADING_PLAN.md"), items=nothing)
+    rubric = items === nothing ? _collect_rubric(reference_path) : items
+    total = sum(item.points for item in rubric if item.kind in (:marks, :require, :forbid))
+    io = IOBuffer()
+    println(io, "# Teacher Grading Plan")
+    println(io)
+    println(io, "Reference package: `", _project_name(reference_path), "`")
+    println(io, "Total marked points: ", total)
+    println(io)
+    println(io, "This file is for teachers. It includes hidden criteria and stable rubric IDs.")
+    println(io)
+    for visibility in (:public, :hidden)
+        println(io, "## ", uppercasefirst(String(visibility)), " Criteria")
+        selected = [item for item in rubric if item.visibility == visibility]
+        if isempty(selected)
+            println(io)
+            println(io, "No criteria.")
+        else
+            for item in selected
+                println(io)
+                println(io, "- ID: `", item.id, "`")
+                println(io, "  Kind: `", item.kind, "`")
+                println(io, "  Points: ", item.points)
+                println(io, "  Description: ", item.description)
+                println(io, "  Source: `", item.path, ":", item.line, "`")
+                item.zero_marks && println(io, "  Zero gate: yes")
+            end
+        end
+        println(io)
+    end
+    write(plan_path, String(take!(io)))
+    return plan_path
+end
+
+"""
+    write_teacher_checklist(reference_path; checklist_path=joinpath(reference_path, "TEACHER_CHECKLIST.md"))
+
+Write a teacher-facing checklist for preparing, distributing, and grading an
+assignment. The checklist is not copied into generated student skeletons.
+"""
+function write_teacher_checklist(reference_path::AbstractString; checklist_path::AbstractString=joinpath(reference_path, "TEACHER_CHECKLIST.md"))
+    text = """
+# Teacher Checklist
+
+Use this checklist before distributing the generated student skeleton.
+
+## Before Generation
+
+- [ ] Edit the reference package name, source code, tests, and assignment notes.
+- [ ] Replace scaffolding placeholders with useful student prompts.
+- [ ] Check that every marked criterion has a clear description and stable ID.
+- [ ] Decide whether AI use is `forbidden`, `recorded`, or `allowed` in `SkeletonizePackage.inc`.
+- [ ] Run `validate_reference_package(...)` and resolve all errors.
+
+## Inspect the Skeleton
+
+- [ ] Generate the skeleton with `generate_skeleton_package(...)`.
+- [ ] Confirm solution code and hidden tests are absent from the skeleton.
+- [ ] Read `STUDENT_INSTRUCTIONS.md`.
+- [ ] Read `RUBRIC.md` as a student would.
+- [ ] Read `AGENTS.md` and confirm the AI-use policy is correct.
+- [ ] Run the skeleton's public tests from a fresh Julia process.
+
+## Before Grading
+
+- [ ] Keep the original reference package unchanged for grading.
+- [ ] Run grading on one known-good submission and one known-bad submission.
+- [ ] Inspect the student feedback report.
+- [ ] Inspect the CSV row and confirm category totals.
+- [ ] Keep `GRADING_PLAN.md` with the teacher materials.
+
+## Future Improvements To Consider
+
+- [ ] Batch submission grading.
+- [ ] More syntax-aware code property checks.
+- [ ] LMS import/export helpers.
+"""
+    write(checklist_path, text)
+    return checklist_path
 end
 
 function _project_name(path::AbstractString)

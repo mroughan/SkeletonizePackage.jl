@@ -4,7 +4,7 @@
 Configuration for transforming a teacher reference package into a student
 skeleton package.
 
-Use [`read_assignment_config`](@ref) or pass a `SkeletonPackages.inc` file to
+Use [`read_assignment_config`](@ref) or pass a `SkeletonizePackage.inc` file to
 [`generate_skeleton_package`](@ref) to construct this from INC metadata.
 `instructions_path` is optional and points to Markdown that should be appended
 to the generated student instructions. `ai_policy` controls the generated
@@ -33,7 +33,7 @@ struct AssignmentConfig
 end
 
 """
-    read_assignment_config(path="SkeletonPackages.inc")
+    read_assignment_config(path="SkeletonizePackage.inc")
 
 Read an assignment configuration file.
 
@@ -58,7 +58,7 @@ assignment
 
 # Example
 
-Given a `SkeletonPackages.inc` file with:
+Given a `SkeletonizePackage.inc` file with:
 
 ```text
 ---
@@ -77,7 +77,7 @@ assignment
 reading it produces an `AssignmentConfig`:
 
 ```julia
-julia> config = read_assignment_config("SkeletonPackages.inc");
+julia> config = read_assignment_config("SkeletonizePackage.inc");
 
 julia> basename(config.reference_path)
 "MyAssignment"
@@ -89,7 +89,7 @@ julia> config.force
 true
 ```
 """
-function read_assignment_config(path::AbstractString="SkeletonPackages.inc")
+function read_assignment_config(path::AbstractString="SkeletonizePackage.inc")
     data = metadata(readinc(path))
     assignment = _metadata_section(data, "assignment")
     student_section = _metadata_section(data, "student")

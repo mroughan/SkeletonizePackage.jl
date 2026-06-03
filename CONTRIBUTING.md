@@ -1,13 +1,14 @@
 # Contributing
 
-Thanks for helping improve `SkeletonPackages.jl`. The package is intended for
+Thanks for helping improve `SkeletonizePackage.jl`. The package is intended for
 teaching, so contributions should keep the teacher and student experience clear,
 auditable, and easy to explain.
 
 ## Development Setup
 
-Use Julia 1.10 or later. The package supports Julia 1.10, while CI also runs
-Julia 1.12 so newer static-analysis tooling can be checked there.
+Use Julia 1.10 or later for normal development. The package supports Julia 1.10,
+while CI also runs Julia 1.12. JET static analysis is intentionally run only on
+Julia 1.12.x.
 
 ```bash
 julia --project -e 'using Pkg; Pkg.instantiate()'
@@ -33,7 +34,7 @@ julia --project=docs docs/make.jl
   property checks, configuration parsing, or CLI behaviour.
 - Keep examples in `examples/` runnable and representative, since they are both
   documentation and regression tests.
-- Use `SkeletonPackages.inc` for assignment configuration. It should follow the
+- Use `SkeletonizePackage.inc` for assignment configuration. It should follow the
   INI format expected by `mroughan/INCspec` and be read/written through
   `mroughan/IncCSV.jl`.
 - Document new user-facing annotations, macros, or configuration options in
@@ -48,9 +49,21 @@ The normal local check is:
 julia --project -e 'using Pkg; Pkg.test()'
 ```
 
-The test suite includes Aqua checks and runs JET only on Julia 1.12 or later.
+Aqua and JET are separate quality checks:
+
+```bash
+julia -e 'using Pkg; Pkg.activate(; temp=true); Pkg.develop(PackageSpec(path=pwd())); Pkg.add(PackageSpec(name="Aqua", version="0.8")); include("test/aqua.jl")'
+```
+
+Run JET with Julia 1.12.x:
+
+```bash
+julia +1.12 -e 'using Pkg; Pkg.activate(; temp=true); Pkg.develop(PackageSpec(path=pwd())); Pkg.add(PackageSpec(name="JET", version="0.11")); include("test/jet.jl")'
+```
+
 Please keep the package compatible with Julia 1.10 unless the compatibility
-policy is intentionally changed.
+policy is intentionally changed. JET may use newer compiler internals, so do
+not move it back into the ordinary test suite.
 
 When adding requirement properties for `@require` or `@forbid`, prefer checks
 that are easy for teachers and students to understand. Source-level properties
@@ -62,6 +75,7 @@ documented.
 Documentation is built with Documenter. The current documentation pages are:
 
 - `docs/src/index.md`
+- `docs/src/features.md`
 - `docs/src/pipeline.md`
 - `docs/src/details.md`
 - `docs/src/requirements.md`

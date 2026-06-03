@@ -1,6 +1,6 @@
 using SortingAssignment
 using Test
-using SkeletonPackages
+using SkeletonizePackage
 
 @assignment_requirements begin
     @require exported(mysort)

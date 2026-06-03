@@ -1,6 +1,6 @@
 module SortingAssignment
 
-using SkeletonPackages
+using SkeletonizePackage
 
 export mysort
 
@@ -23,7 +23,7 @@ function mysort(xs)
     @solution begin
         return sort(xs)
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: implement mysort")
     end
 end

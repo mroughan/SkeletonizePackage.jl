@@ -4,18 +4,18 @@ Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))
 Pkg.instantiate()
 
 using Documenter
-using SkeletonPackages
+using SkeletonizePackage
 
-DocMeta.setdocmeta!(SkeletonPackages, :DocTestSetup, :(using SkeletonPackages); recursive=true)
+DocMeta.setdocmeta!(SkeletonizePackage, :DocTestSetup, :(using SkeletonizePackage); recursive=true)
 
 makedocs(;
-    modules = [SkeletonPackages],
+    modules = [SkeletonizePackage],
     authors="Matthew Roughan <matthew.roughan@adelaide.edu.au>",
-    sitename = "SkeletonPackages.jl",
+    sitename = "SkeletonizePackage.jl",
     format = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
-        repolink = "https://github.com/mroughan/SkeletonPackages.jl",
-        canonical="https://mroughan.github.io/SkeletonPackages.jl",
+        repolink = "https://github.com/mroughan/SkeletonizePackage.jl",
+        canonical="https://mroughan.github.io/SkeletonizePackage.jl",
         assets=String[],
     ),
     pages = [
@@ -31,7 +31,7 @@ makedocs(;
 ) 
 
 deploydocs(;
-           repo = "github.com/mroughan/SkeletonPackages.jl",
+           repo = "github.com/mroughan/SkeletonizePackage.jl",
            devbranch = "main",
            push_preview = true
           )

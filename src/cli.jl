@@ -7,7 +7,7 @@ Commands:
 
 - `validate PATH`
 - `generate REFERENCE SKELETON [--force] [--no-validate] [--ai-policy forbidden|recorded|allowed]`
-- `generate --config SkeletonPackages.inc [--force]`
+- `generate --config SkeletonizePackage.inc [--force]`
 - `grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--csv PATH] [--replace-csv]`
 - `init PATH [--name NAME] [--force] [--ai-policy forbidden|recorded|allowed]`
 
@@ -148,11 +148,11 @@ end
 function _usage(io, code)
     println(io, """
 Usage:
-  julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate PATH
-  julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate REFERENCE SKELETON [--force] [--no-validate] [--ai-policy forbidden|recorded|allowed]
-  julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate --config SkeletonPackages.inc [--force]
-  julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--csv PATH] [--replace-csv]
-  julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- init PATH [--name NAME] [--force] [--ai-policy forbidden|recorded|allowed]
+  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate PATH
+  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate REFERENCE SKELETON [--force] [--no-validate] [--ai-policy forbidden|recorded|allowed]
+  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate --config SkeletonizePackage.inc [--force]
+  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--csv PATH] [--replace-csv]
+  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init PATH [--name NAME] [--force] [--ai-policy forbidden|recorded|allowed]
 """)
     return code
 end

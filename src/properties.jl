@@ -47,7 +47,7 @@ function _source_project_from_path(root::AbstractString)
 end
 
 function _source_project_root(caller::Module)
-    excluded = Set([:SkeletonPackages, :Test, :IncCSV])
+    excluded = Set([:SkeletonizePackage, :Test, :IncCSV])
     for name in names(caller; all=false, imported=true)
         name in excluded && continue
         isdefined(caller, name) || continue
@@ -58,7 +58,7 @@ function _source_project_root(caller::Module)
         root = dirname(dirname(path))
         isfile(joinpath(root, "Project.toml")) && return root
     end
-    path = pathof(SkeletonPackages)
+    path = pathof(SkeletonizePackage)
     path === nothing && throw(ArgumentError("could not locate package source"))
     return dirname(dirname(path))
 end

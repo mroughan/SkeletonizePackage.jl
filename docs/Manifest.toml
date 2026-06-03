@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "82a0ad068b927a33aa13e1eb0186ba0fcc371c86"
+project_hash = "f8b711f0dec0902da880f2164f4253f141729e97"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -140,7 +140,6 @@ version = "1.0.0"
 [[deps.IncCSV]]
 deps = ["CSV", "DataAPI", "Tables"]
 git-tree-sha1 = "192e144fcc377cd0cad1e94e6a1602f5b4d1b97c"
-repo-rev = "main"
 repo-url = "https://github.com/mroughan/IncCSV.jl"
 uuid = "66f2fdda-89f9-4824-87f0-56b432c695d5"
 version = "0.1.0"
@@ -347,7 +346,7 @@ version = "1.4.10"
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
 
-[[deps.SkeletonPackages]]
+[[deps.SkeletonizePackage]]
 deps = ["IncCSV", "Serialization", "TOML"]
 path = "/home/matt/Dropbox/src/Julia/Teaching_Packages/SkeletonPackages.jl/docs/.."
 uuid = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"

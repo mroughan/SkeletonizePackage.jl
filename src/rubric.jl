@@ -1,4 +1,5 @@
 struct RubricItem
+    id::String
     kind::Symbol
     visibility::Symbol
     points::Int
@@ -19,20 +20,37 @@ struct ReferenceTestSpec
 end
 
 function _parse_marks_line(stripped::AbstractString)
-    m = match(r"^@marks\s+([+-]?\d+)\s+(\"(?:\\.|[^\"\\])*\")\s*$", stripped)
-    m === nothing && return nothing
-    points_text = m.captures[1]
-    description_text = m.captures[2]
-    points_text === nothing && return nothing
-    description_text === nothing && return nothing
-    points = tryparse(Int, points_text)
-    points === nothing && return nothing
+    parsed = Meta.parse(stripped; raise=false)
+    parsed isa Expr && parsed.head == :macrocall || return nothing
+    length(parsed.args) >= 4 || return nothing
+    parsed.args[1] == Symbol("@marks") || return nothing
+    points = parsed.args[3]
+    points isa Integer || return nothing
     points < 0 && return nothing
-    parsed = Meta.parse(description_text; raise=false)
-    parsed isa String || return nothing
-    isempty(strip(parsed)) && return nothing
-    occursin(r"[\r\n]", parsed) && return nothing
-    return (points=points, description=parsed)
+    description = nothing
+    id = nothing
+    for arg in parsed.args[4:end]
+        if arg isa String
+            description === nothing || return nothing
+            description = arg
+        elseif arg isa Expr && arg.head == :(=)
+            key = arg.args[1]
+            value = arg.args[2]
+            if key == :id
+                value isa String || return nothing
+                id = value
+            else
+                return nothing
+            end
+        else
+            return nothing
+        end
+    end
+    description isa String || return nothing
+    isempty(strip(description)) && return nothing
+    occursin(r"[\r\n]", description) && return nothing
+    _valid_rubric_id(id) || return nothing
+    return (points=Int(points), description=description, id=id)
 end
 
 function _collect_rubric(reference_path::AbstractString)
@@ -42,6 +60,7 @@ function _collect_rubric(reference_path::AbstractString)
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
         relroot = relpath(walkroot, root)
         for file in files
+            file in TEACHER_ONLY_FILES && continue
             any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS) || continue
             path = joinpath(walkroot, file)
             rel = relroot == "." ? file : joinpath(relroot, file)
@@ -55,17 +74,17 @@ function _collect_rubric(reference_path::AbstractString)
                     for (offset, line) in enumerate(block)
                         marks = _parse_marks_line(strip(line))
                         if marks !== nothing
-                            push!(items, RubricItem(:marks, visibility, marks.points, marks.description, false, nothing, rel, i + offset))
+                            push!(items, RubricItem(_rubric_id(marks.id, :marks, visibility, marks.description, length(items) + 1), :marks, visibility, marks.points, marks.description, false, nothing, rel, i + offset))
                             continue
                         end
                         property = _parse_property_line(strip(line))
                         if property !== nothing
-                            push!(items, RubricItem(property.kind, visibility, property.points, property.description, property.zero_marks, property.spec, rel, i + offset))
+                            push!(items, RubricItem(_rubric_id(property.id, property.kind, visibility, property.description, length(items) + 1), property.kind, visibility, property.points, property.description, property.zero_marks, property.spec, rel, i + offset))
                             continue
                         end
                         reference = _parse_reference_test_line(strip(line))
                         reference === nothing && continue
-                        push!(items, RubricItem(:reference_test, visibility, 0, reference.description, false, nothing, rel, i + offset))
+                        push!(items, RubricItem(_rubric_id(nothing, :reference_test, visibility, reference.description, length(items) + 1), :reference_test, visibility, 0, reference.description, false, nothing, rel, i + offset))
                     end
                     i = j + 1
                 else
@@ -84,6 +103,7 @@ function _collect_reference_tests(reference_path::AbstractString)
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
         relroot = relpath(walkroot, root)
         for file in files
+            file in TEACHER_ONLY_FILES && continue
             any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS) || continue
             path = joinpath(walkroot, file)
             rel = relroot == "." ? file : joinpath(relroot, file)
@@ -144,7 +164,7 @@ function _rubric_marks_section(title::AbstractString, items::Vector{RubricItem})
     else
         for item in items
             println(io)
-            println(io, "- ", item.points, " mark", item.points == 1 ? "" : "s", ": ", item.description)
+            println(io, "- `", item.id, "`: ", item.points, " mark", item.points == 1 ? "" : "s", ": ", item.description)
         end
     end
     return String(take!(io)) |> rstrip
@@ -162,7 +182,7 @@ function _rubric_property_section(title::AbstractString, items::Vector{RubricIte
             suffix = item.zero_marks ? " Zero marks if failed." : ""
             points = item.points > 0 ? " ($(item.points) mark$(item.points == 1 ? "" : "s"))" : ""
             println(io)
-            println(io, "- ", verb, points, ": ", item.description, suffix)
+            println(io, "- `", item.id, "`: ", verb, points, ": ", item.description, suffix)
         end
     end
     return String(take!(io)) |> rstrip
@@ -199,6 +219,7 @@ function _parse_property_line(stripped::AbstractString)
     points = 0
     zero_marks = false
     label = nothing
+    id = nothing
     for arg in parsed.args[4:end]
         if arg isa Expr && arg.head == :(=)
             key = arg.args[1]
@@ -210,6 +231,9 @@ function _parse_property_line(stripped::AbstractString)
             elseif key == :zero_marks
                 value isa Bool || return nothing
                 zero_marks = value
+            elseif key == :id
+                value isa String || return nothing
+                id = value
             else
                 return nothing
             end
@@ -219,8 +243,9 @@ function _parse_property_line(stripped::AbstractString)
             return nothing
         end
     end
+    _valid_rubric_id(id) || return nothing
     description = label === nothing ? _property_description(kind, spec) : string(label, " (", _property_description(kind, spec), ")")
-    return (kind=kind, spec=spec, points=points, zero_marks=zero_marks, description=description)
+    return (kind=kind, spec=spec, points=points, zero_marks=zero_marks, description=description, id=id)
 end
 
 function _property_description(kind::Symbol, spec::Expr)
@@ -228,4 +253,19 @@ function _property_description(kind::Symbol, spec::Expr)
     rendered_args = join(string.(spec.args[2:end]), ", ")
     prefix = kind == :require ? "must satisfy" : "must not satisfy"
     return "$prefix `$property($rendered_args)`"
+end
+
+function _valid_rubric_id(id)
+    id === nothing && return true
+    id isa AbstractString || return false
+    return occursin(r"^[A-Za-z][A-Za-z0-9_.:-]*$", id)
+end
+
+function _rubric_id(id, kind::Symbol, visibility::Symbol, description::AbstractString, index::Int)
+    id !== nothing && return String(id)
+    stem = lowercase(replace(description, r"[^A-Za-z0-9]+" => "-"))
+    stem = strip(stem, '-')
+    isempty(stem) && (stem = string(kind))
+    length(stem) > 36 && (stem = stem[1:36])
+    return string(visibility, "-", kind, "-", lpad(index, 2, '0'), "-", stem)
 end

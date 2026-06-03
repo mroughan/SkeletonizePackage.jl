@@ -1,6 +1,6 @@
 # Pipeline
 
-`SkeletonPackages.jl` is built around a setup to reference to skeleton to
+`SkeletonizePackage.jl` is built around a setup to reference to skeleton to
 submission pipeline:
 
 ```text
@@ -28,15 +28,15 @@ The checked-in examples can be used to exercise the whole flow. Teachers can
 begin from a scaffolded reference package:
 
 ```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- init MyAssignment --ai-policy recorded
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init MyAssignment --ai-policy recorded
 ```
 
 Then generate a student skeleton and grade a submitted package:
 
 ```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate examples/SortingAssignment
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
 ```
 
 The generated skeleton is the package distributed to students:
@@ -55,9 +55,13 @@ The student's submitted package is graded against the original reference
 package. The grading command writes two different outputs: a Markdown feedback
 report for the student, and a CSV row for the teacher's marks table.
 
+Teacher scaffolds also include `GRADING_PLAN.md` and `TEACHER_CHECKLIST.md`.
+These files stay with the teacher reference package and are not copied into the
+student skeleton.
+
 ## Configuration
 
-Assignment generation can be configured with `SkeletonPackages.inc`:
+Assignment generation can be configured with `SkeletonizePackage.inc`:
 
 ```text
 ---
@@ -77,7 +81,7 @@ assignment
 Then run:
 
 ```julia
-generate_skeleton_package("SkeletonPackages.inc")
+generate_skeleton_package("SkeletonizePackage.inc")
 ```
 
 `reference_path`, `skeleton_path`, `mode`, `force`, `validate`, and `ai_policy`
@@ -97,8 +101,8 @@ The supported annotations are:
 
 ```julia
 @solution      # teacher-only implementation
-@starter       # replacement shown to students
-@student_test  # tests included in the generated starter
+@scaffolding       # replacement shown to students
+@student_test  # tests included in the generated skeleton
 @hidden_test   # teacher-only grading tests
 @marks         # rubric metadata attached to nearby tests
 @require       # code property that must hold
@@ -136,9 +140,9 @@ graded.
 `build`, and `solutions`.
 
 For `mode = :student`, it removes `@solution` and `@hidden_test` bodies, and
-keeps `@starter` and `@student_test` bodies. For `mode = :teacher`, it keeps
+keeps `@scaffolding` and `@student_test` bodies. For `mode = :teacher`, it keeps
 `@solution`, `@student_test`, and `@hidden_test` bodies, and removes
-`@starter` bodies.
+`@scaffolding` bodies.
 
 If the destination exists, pass `force=true`.
 
@@ -148,6 +152,10 @@ Generation also writes:
   configured exercise notes.
 - `RUBRIC.md`, generated from `@marks`, `@require`, and `@forbid`.
 - `AGENTS.md`, generated from `ai_policy` with explicit AI-use instructions.
+
+`create_assignment(...)` also writes teacher-only `GRADING_PLAN.md` and
+`TEACHER_CHECKLIST.md`. They can be refreshed with `write_grading_plan(...)`
+and `write_teacher_checklist(...)`.
 
 ## Checking Student Work
 
@@ -160,7 +168,7 @@ isvalid(report)
 
 Validation errors block generation when `validate=true`. Warnings and notes are
 teacher-facing design feedback, for example missing public tests, hidden tests,
-or starter blocks that do not look like student prompts.
+or scaffolding blocks that do not look like student prompts.
 
 `grade_submission` runs a submission package's tests in an isolated Julia
 process and returns a `GradeResult`. The result contains `student_report` for

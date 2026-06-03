@@ -1,6 +1,6 @@
 # Feature List
 
-`SkeletonPackages.jl` supports the full teaching-package lifecycle: creating a
+`SkeletonizePackage.jl` supports the full teaching-package lifecycle: creating a
 teacher reference package, generating a student skeleton, and grading a student
 submission against the original reference.
 
@@ -9,7 +9,7 @@ submission against the original reference.
 - Create a new teacher reference package with `create_assignment(...)` or the
   `init` CLI command.
 - Generate a ready-to-edit package containing source files, tests, assignment
-  notes, a README, and a `SkeletonPackages.inc` configuration file.
+  notes, a README, and a `SkeletonizePackage.inc` configuration file.
 - Include examples of the main annotation and grading features so teachers can
   edit from a working starting point.
 
@@ -17,7 +17,7 @@ submission against the original reference.
 
 - Transform a teacher reference package into a student skeleton package with
   `generate_skeleton_package(...)`.
-- Keep starter code and public tests for students.
+- Keep scaffolding code and public tests for students.
 - Remove teacher-only solutions and hidden tests from the generated skeleton.
 - Transform Julia source, Markdown, TOML, and INC configuration files.
 - Skip teacher-only directories such as `.git`, `build`, and `solutions`.
@@ -25,7 +25,7 @@ submission against the original reference.
 ## Annotation Language
 
 - Use `@solution` for teacher-only reference implementations.
-- Use `@starter` for code shown to students.
+- Use `@scaffolding` for code shown to students.
 - Use `@student_test` for public tests included in the skeleton.
 - Use `@hidden_test` for private grading tests kept in the reference package.
 - Use `@assignment_requirements` to group broader source and behavioural
@@ -37,9 +37,12 @@ submission against the original reference.
 - Generate a student-facing `RUBRIC.md` from embedded rubric entries.
 - Assign marks directly to required or forbidden source properties with
   `marks=N`.
+- Attach stable rubric identifiers with `id="..."` so feedback and grading
+  plans can refer to criteria consistently.
 - Mark serious integrity or shortcut violations with `zero_marks=true`, which
   makes a failed requirement zero the whole assignment.
-- Summarize marks by category and total in grading reports and CSV rows.
+- Summarize marks by criterion, category, and total in grading reports and CSV
+  rows.
 
 ## Code Property Checks
 
@@ -68,9 +71,17 @@ submission against the original reference.
 - Preserve the generated skeleton as a normal Julia package that students can
   open, edit, instantiate, test, and submit.
 
+## Teacher-Facing Outputs
+
+- Write `GRADING_PLAN.md` with stable IDs, public and hidden criteria, source
+  locations, points, and zero gates.
+- Write `TEACHER_CHECKLIST.md` with preparation, skeleton inspection, and
+  grading checks.
+- Keep teacher-facing files out of generated student skeletons.
+
 ## Configuration
 
-- Configure generation with `SkeletonPackages.inc`.
+- Configure generation with `SkeletonizePackage.inc`.
 - Use the INI-style metadata format defined by INCspec and read/written through
   IncCSV.jl.
 - Configure reference and skeleton paths, generation mode, validation, force
@@ -83,6 +94,13 @@ submission against the original reference.
   and common teaching-design issues.
 - Block skeleton generation on validation errors when validation is enabled.
 
+## Quality Checks
+
+- Run ordinary package tests on supported Julia versions.
+- Run Aqua quality checks separately from the functional test suite.
+- Run JET static analysis as a separate check on Julia 1.12.x only, while the
+  package itself remains compatible with Julia 1.10.
+
 ## Grading Outputs
 
 - Grade student submissions with `grade_submission(...)` or the `grade` CLI
@@ -91,6 +109,12 @@ submission against the original reference.
 - Produce a CSV header and row suitable for building a class marks spreadsheet.
 - Include public, hidden, property, reference-test, and total marks in grading
   summaries.
+- Return per-criterion `CriterionResult` values from `grade_submission`.
+
+## Planned Work
+
+- See `TODO.md` for the intentionally deferred syntax-aware property-checking
+  work and batch submission grading plan.
 
 ## Command-Line Workflow
 

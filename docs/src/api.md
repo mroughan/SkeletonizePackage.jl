@@ -2,7 +2,7 @@
 
 ```@docs
 @solution
-@starter
+@scaffolding
 @student_test
 @hidden_test
 @marks
@@ -12,6 +12,7 @@
 @reference_test
 AssignmentConfig
 GradeResult
+CriterionResult
 PropertyCheckResult
 ReferenceTestResult
 ValidationIssue
@@ -23,4 +24,6 @@ main
 read_assignment_config
 strip_reference_annotations
 validate_reference_package
+write_grading_plan
+write_teacher_checklist
 ```

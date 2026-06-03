@@ -23,28 +23,28 @@ macro solution(block)
 end
 
 """
-    @starter begin
+    @scaffolding begin
         ...
     end
 
-Mark the starter code that students should receive in place of a teacher
+Mark the scaffolding code that students should receive in place of a teacher
 solution.
 
 `generate_skeleton_package` keeps this block for skeleton packages and removes it
 from teacher-mode output. In the reference package, the macro expands to `nothing`
-so starter code does not run.
+so scaffolding code does not run.
 
 # Example
 
 ```julia
-julia> @starter begin
+julia> @scaffolding begin
            error("TODO")
        end
 ```
 
 The expression returns `nothing`, so no value is printed at the REPL.
 """
-macro starter(block)
+macro scaffolding(block)
     return :(nothing)
 end
 
@@ -90,7 +90,7 @@ macro hidden_test(block)
 end
 
 """
-    @marks points "description"
+    @marks points "description" [id="stable-id"]
 
 Attach rubric metadata to nearby tests. The macro is a runtime no-op so teacher
 and generated student tests can execute normally, while `generate_skeleton_package`
@@ -100,7 +100,7 @@ extracts these lines into `RUBRIC.md`.
 
 ```julia
 @student_test begin
-    @marks 1 "sorts a two-element vector"
+    @marks 1 "sorts a two-element vector" id="sort-basic"
     @test mysort([2, 1]) == [1, 2]
 end
 ```
@@ -108,7 +108,7 @@ end
 Generated rubric entry:
 
 ```text
-- 1 mark: sorts a two-element vector
+- `sort-basic`: 1 mark: sorts a two-element vector
 ```
 """
 macro marks(args...)
@@ -116,7 +116,7 @@ macro marks(args...)
 end
 
 """
-    @require property(...) [marks=N] [zero_marks=true] ["description"]
+    @require property(...) [marks=N] [zero_marks=true] [id="stable-id"] ["description"]
 
 Assert that a source-code property holds for the package under test. Intended
 for use inside `@student_test` or `@hidden_test` blocks.
@@ -125,7 +125,7 @@ for use inside `@student_test` or `@hidden_test` blocks.
 
 ```julia
 @assignment_requirements begin
-    @require exported(mysort) marks=1 "exports the required function"
+    @require exported(mysort) marks=1 id="interface-export" "exports the required function"
     @require signature(mysort, 1)
 end
 ```
@@ -142,11 +142,11 @@ During grading, `marks=N` awards marks for the property itself. `zero_marks=true
 turns a failed property into a whole-assignment zeroing condition.
 """
 macro require(spec, args...)
-    return esc(:(@test SkeletonPackages._check_property($__module__, :require, $(QuoteNode(spec)))))
+    return esc(:(@test SkeletonizePackage._check_property($__module__, :require, $(QuoteNode(spec)))))
 end
 
 """
-    @forbid property(...) [marks=N] [zero_marks=true] ["description"]
+    @forbid property(...) [marks=N] [zero_marks=true] [id="stable-id"] ["description"]
 
 Assert that a source-code property does not hold for the package under test.
 Intended for use inside `@student_test` or `@hidden_test` blocks.
@@ -165,7 +165,7 @@ During grading, the `zero_marks=true` example gives zero for the whole assignmen
 the submitted source imports `DataFrames`.
 """
 macro forbid(spec, args...)
-    return esc(:(@test SkeletonPackages._check_property($__module__, :forbid, $(QuoteNode(spec)))))
+    return esc(:(@test SkeletonizePackage._check_property($__module__, :forbid, $(QuoteNode(spec)))))
 end
 
 """
@@ -226,8 +226,9 @@ macro reference_test(args...)
     return :(nothing)
 end
 
-const ANNOTATION_OPENERS = Set(["@solution", "@starter", "@student_test", "@hidden_test"])
+const ANNOTATION_OPENERS = Set(["@solution", "@scaffolding", "@student_test", "@hidden_test"])
 const TEACHER_ONLY_DIRS = Set([".git", "build", "solutions", ".julia", ".CondaPkg"])
+const TEACHER_ONLY_FILES = Set(["GRADING_PLAN.md", "TEACHER_CHECKLIST.md"])
 const TRANSFORMED_EXTENSIONS = (".jl", ".md", ".toml", ".inc")
 
 """
@@ -236,12 +237,12 @@ const TRANSFORMED_EXTENSIONS = (".jl", ".md", ".toml", ".inc")
 Transform annotated Julia source text.
 
 For `mode = :student`, remove `@solution` and `@hidden_test` regions, and keep
-the bodies of `@starter` and `@student_test` regions. For `mode = :teacher`,
+the bodies of `@scaffolding` and `@student_test` regions. For `mode = :teacher`,
 keep `@solution`, `@student_test`, and `@hidden_test` bodies, and remove
-`@starter` regions.
+`@scaffolding` regions.
 
 This implementation is intentionally line-oriented. Annotation macros must
-appear on their own line as `@solution begin`, `@starter begin`,
+appear on their own line as `@solution begin`, `@scaffolding begin`,
 `@student_test begin`, or `@hidden_test begin`.
 
 # Example
@@ -252,7 +253,7 @@ julia> text = \"\"\"
            @solution begin
                return 42
            end
-           @starter begin
+           @scaffolding begin
                error("TODO")
            end
        end
@@ -276,7 +277,7 @@ function strip_reference_annotations(text::AbstractString; mode::Symbol=:student
     while i <= length(lines)
         line = lines[i]
         stripped = strip(line)
-        if stripped in ("@solution begin", "@starter begin", "@student_test begin", "@hidden_test begin")
+        if stripped in ("@solution begin", "@scaffolding begin", "@student_test begin", "@hidden_test begin")
             macro_name = split(stripped)[1]
             block, j = _collect_block(lines, i)
             if _keep_body(macro_name, mode)
@@ -293,7 +294,7 @@ end
 
 function _keep_body(macro_name::AbstractString, mode::Symbol)
     if mode == :student
-        return macro_name in ("@starter", "@student_test")
+        return macro_name in ("@scaffolding", "@student_test")
     elseif mode == :teacher
         return macro_name in ("@solution", "@student_test", "@hidden_test")
     else

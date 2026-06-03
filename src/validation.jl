@@ -83,8 +83,9 @@ Validate an annotated teacher reference package and return a [`ValidationReport`
 
 The validator checks for blocking transformation problems, such as unsupported
 inline annotation forms and unterminated blocks. It also reports teaching-design
-warnings, such as solution blocks without nearby starter blocks, missing public
-tests, missing hidden tests, or starter code with no obvious TODO/error prompt.
+warnings, such as solution blocks without nearby scaffolding blocks, missing
+public tests, missing hidden tests, or scaffolding code with no obvious
+TODO/error prompt.
 
 Pass `io=stdout` to print a teacher-facing report while returning it.
 
@@ -119,6 +120,7 @@ function validate_reference_package(reference_path::AbstractString; io::Union{No
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
         relroot = relpath(walkroot, root)
         for file in files
+            file in TEACHER_ONLY_FILES && continue
             path = joinpath(walkroot, file)
             rel = relroot == "." ? file : joinpath(relroot, file)
             _validate_file!(issues, annotation_counts, root, rel, path)
@@ -128,8 +130,8 @@ function validate_reference_package(reference_path::AbstractString; io::Union{No
     if annotation_counts["@solution"] == 0
         _push_issue!(issues, :warning, "", nothing, "no @solution blocks found", "Add @solution blocks around teacher-only implementations.")
     end
-    if annotation_counts["@starter"] == 0
-        _push_issue!(issues, :warning, "", nothing, "no @starter blocks found", "Give students explicit starter code or placeholders for each exercise.")
+    if annotation_counts["@scaffolding"] == 0
+        _push_issue!(issues, :warning, "", nothing, "no @scaffolding blocks found", "Give students explicit scaffolding code or placeholders for each exercise.")
     end
     if annotation_counts["@student_test"] == 0
         _push_issue!(issues, :warning, "", nothing, "no @student_test blocks found", "Include visible tests so students can check basic behaviour.")
@@ -167,7 +169,7 @@ function _validate_file!(issues, counts, root, rel, path)
 
     lines = split(text, '\n'; keepempty=true)
     solution_lines = Int[]
-    starter_lines = Int[]
+    scaffolding_lines = Int[]
     for (line_number, line) in enumerate(lines)
         stripped = strip(line)
         first_token = isempty(stripped) ? "" : first(split(stripped))
@@ -177,13 +179,13 @@ function _validate_file!(issues, counts, root, rel, path)
                 _push_issue!(issues, :error, rel, line_number, "unsupported annotation syntax: $stripped", "Put annotation openers on their own line, for example `$first_token begin`.")
             end
             first_token == "@solution" && push!(solution_lines, line_number)
-            first_token == "@starter" && push!(starter_lines, line_number)
+            first_token == "@scaffolding" && push!(scaffolding_lines, line_number)
         elseif startswith(stripped, "@marks")
             _parse_marks_line(stripped) === nothing &&
-                _push_issue!(issues, :error, rel, line_number, "unsupported @marks syntax: $stripped", "Use `@marks POINTS \"student-facing description\"` inside @student_test or @hidden_test blocks.")
+                _push_issue!(issues, :error, rel, line_number, "unsupported @marks syntax: $stripped", "Use `@marks POINTS \"student-facing description\"`, optionally with `id=\"stable-id\"`.")
         elseif startswith(stripped, "@require") || startswith(stripped, "@forbid")
             _parse_property_line(stripped) === nothing &&
-                _push_issue!(issues, :error, rel, line_number, "unsupported requirement syntax: $stripped", "Use `@require property(...)`, optionally followed by `marks=N`, `zero_marks=true`, and a description string.")
+                _push_issue!(issues, :error, rel, line_number, "unsupported requirement syntax: $stripped", "Use `@require property(...)`, optionally followed by `marks=N`, `zero_marks=true`, `id=\"stable-id\"`, and a description string.")
         elseif startswith(stripped, "@assignment_requirements")
             stripped == "@assignment_requirements begin" ||
                 _push_issue!(issues, :error, rel, line_number, "unsupported assignment requirements syntax: $stripped", "Use `@assignment_requirements begin`.")
@@ -193,7 +195,7 @@ function _validate_file!(issues, counts, root, rel, path)
         elseif any(occursin(name, stripped) for name in ANNOTATION_OPENERS)
             _push_issue!(issues, :error, rel, line_number, "annotation appears inline or inside a larger expression", "Use a full block with the annotation opener on its own line.")
         elseif occursin(r"@(hidden|stub|student|teacher|hint|rubric)\b", stripped)
-            _push_issue!(issues, :warning, rel, line_number, "unsupported planned annotation found", "Use the supported annotations: @solution, @starter, @student_test, @hidden_test, and @marks.")
+                _push_issue!(issues, :warning, rel, line_number, "unsupported planned annotation found", "Use the supported annotations: @solution, @scaffolding, @student_test, @hidden_test, and @marks.")
         end
     end
 
@@ -217,16 +219,16 @@ function _validate_file!(issues, counts, root, rel, path)
     end
 
     for line in solution_lines
-        if !any(abs(line - starter) <= 8 for starter in starter_lines)
-            _push_issue!(issues, :warning, rel, line, "@solution has no nearby @starter block", "Pair each reference solution with a student-facing starter block where practical.")
+        if !any(abs(line - scaffolding) <= 8 for scaffolding in scaffolding_lines)
+            _push_issue!(issues, :warning, rel, line, "@solution has no nearby @scaffolding block", "Pair each reference solution with a student-facing scaffolding block where practical.")
         end
     end
 
-    for line in starter_lines
+    for line in scaffolding_lines
         block, _ = _collect_block(lines, line)
-        starter_text = join(block, "\n")
-        if !occursin(r"TODO|FIXME|error\(|throw\(|missing"i, starter_text)
-            _push_issue!(issues, :info, rel, line, "@starter block has no obvious student prompt or failing placeholder", "Consider adding a TODO, `error(\"TODO\")`, or clear partial implementation.")
+        scaffolding_text = join(block, "\n")
+        if !occursin(r"TODO|FIXME|error\(|throw\(|missing"i, scaffolding_text)
+            _push_issue!(issues, :info, rel, line, "@scaffolding block has no obvious student prompt or failing placeholder", "Consider adding a TODO, `error(\"TODO\")`, or clear partial implementation.")
         end
     end
 end

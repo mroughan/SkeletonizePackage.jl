@@ -2,14 +2,14 @@
 
 ## Implementation Philosophy
 
-`SkeletonPackages.jl` does not try to be a full Julia parser or reformatter.
+`SkeletonizePackage.jl` does not try to be a full Julia parser or reformatter.
 Instead, it defines a small annotation language that is easy to recognize and
 transform. That keeps generated packages readable and avoids surprising edits
 outside marked regions.
 
 The validation step checks annotated files before and after transformation so
 broken generated Julia source is caught early. It also reports teaching-design
-warnings, such as a solution block without nearby starter code.
+warnings, such as a solution block without nearby scaffolding code.
 
 The broader grading philosophy is behavioural rather than textual: submission
 packages should be checked using public tests, hidden tests, reference
@@ -21,11 +21,11 @@ their source code directly with the reference solution.
 The package exposes a small CLI-style entry point:
 
 ```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentStudent --force --ai-policy recorded
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate --config examples/ConfiguredAssignment/SkeletonPackages.inc --force
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade examples/SortingAssignment StudentSubmission --report feedback.md --csv marks.csv
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- init MyAssignment --ai-policy recorded
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate examples/SortingAssignment
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate examples/SortingAssignment SortingAssignmentStudent --force --ai-policy recorded
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate --config examples/ConfiguredAssignment/SkeletonizePackage.inc --force
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade examples/SortingAssignment StudentSubmission --report feedback.md --csv marks.csv
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init MyAssignment --ai-policy recorded
 ```
 
 ## Annotation Contract
@@ -39,7 +39,7 @@ using exactly one of the supported forms:
 end
 ```
 
-Supported annotations are `@solution`, `@starter`, `@student_test`, and
+Supported annotations are `@solution`, `@scaffolding`, `@student_test`, and
 `@hidden_test`.
 
 The transformer preserves the body of a kept annotation and removes both the
@@ -50,7 +50,7 @@ is gone.
 ## Configuration Files
 
 Configuration files use the INC file model: an INI-style metadata block
-delimited by `---` lines, followed by a small CSV component. `SkeletonPackages`
+delimited by `---` lines, followed by a small CSV component. `SkeletonizePackage`
 uses `IncCSV.jl` to read and write these files.
 
 Metadata values are strings or integers. Boolean settings such as `force` and
@@ -60,6 +60,16 @@ The `ai_policy` setting may be `forbidden`, `recorded`, or `allowed`. It
 controls the generated `AGENTS.md` file in the student skeleton. This file is
 not a technical security mechanism; it is an explicit instruction and audit
 record that makes the teacher's AI-use rule unambiguous.
+
+## Test and CI Layout
+
+The ordinary package tests live in `test/runtests.jl` and are intended to run on
+all supported Julia versions, including Julia 1.10.
+
+Aqua checks live in `test/aqua.jl` and run as a separate quality job in a
+temporary Julia environment. JET checks live in `test/jet.jl` and are
+intentionally restricted to Julia 1.12.x. This keeps the package compatible with
+Julia 1.10 while still checking newer static analysis tooling in CI.
 
 ## Rubric Generation
 
@@ -79,6 +89,11 @@ end
 ```
 
 `@marks` is a no-op macro at runtime. During generation,
-`SkeletonPackages.jl` extracts those entries into `RUBRIC.md`, split into
+`SkeletonizePackage.jl` extracts those entries into `RUBRIC.md`, split into
 public and hidden criteria. This gives students the grading contract without
 revealing private test implementations.
+
+Stable IDs can be supplied with `id="..."` on `@marks`, `@require`, and
+`@forbid`. IDs are useful in moderation, appeals, feedback reports, and teacher
+grading plans. If an ID is omitted, one is generated from the criterion
+metadata.

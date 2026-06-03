@@ -1,6 +1,6 @@
 module ThinAssignment
 
-using SkeletonPackages
+using SkeletonizePackage
 
 export double_it
 
@@ -13,7 +13,7 @@ function double_it(x)
     @solution begin
         return 2x
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: implement double_it")
     end
 end

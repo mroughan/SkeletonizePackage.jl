@@ -1,13 +1,13 @@
-# SkeletonPackages.jl
+# SkeletonizePackage.jl
 
-[![CI](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/CI.yml)
-[![Documentation](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/Documentation.yml/badge.svg)](https://github.com/mroughan/SkeletonPackages.jl/actions/workflows/Documentation.yml)
-[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://mroughan.github.io/SkeletonPackages.jl/dev/)
-[![codecov](https://codecov.io/gh/mroughan/SkeletonPackages.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/mroughan/SkeletonPackages.jl)
+[![CI](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/CI.yml)
+[![Documentation](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/documentation.yml/badge.svg)](https://github.com/mroughan/SkeletonizePackage.jl/actions/workflows/documentation.yml)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://mroughan.github.io/SkeletonizePackage.jl/dev/)
+[![codecov](https://codecov.io/gh/mroughan/SkeletonizePackage.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/mroughan/SkeletonizePackage.jl)
 [![Julia](https://img.shields.io/badge/julia-1.10%2B-blue.svg)](https://julialang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-`SkeletonPackages.jl` is a teaching-oriented metapackage for transforming a
+`SkeletonizePackage.jl` is a teaching-oriented metapackage for transforming a
 teacher reference package into a student skeleton package. Students complete the
 skeleton to create their submission package.
 
@@ -15,15 +15,19 @@ skeleton to create their submission package.
 
 - Step 0 teacher scaffolding with `create_assignment(...)` or the `init` CLI
   command.
-- Reference-to-skeleton transformation using `@solution`, `@starter`,
+- Reference-to-skeleton transformation using `@solution`, `@scaffolding`,
   `@student_test`, and `@hidden_test`.
 - Generated `STUDENT_INSTRUCTIONS.md`, `RUBRIC.md`, and configurable
   `AGENTS.md` AI-use policy files.
 - Rubric marks, required/forbidden code properties, and whole-assignment
   zeroing gates with `zero_marks=true`.
+- Stable rubric IDs, per-criterion grading results, and teacher-facing
+  `GRADING_PLAN.md` / `TEACHER_CHECKLIST.md` files.
 - Hidden reference-oracle tests that compare submissions with the teacher
   implementation.
 - Student feedback reports and CSV mark rows for class-scale grading.
+- Separate CI checks for package tests, Aqua quality checks, and JET static
+  analysis on Julia 1.12.
 
 ## Quick start
 
@@ -31,7 +35,7 @@ From Julia, start by creating a teacher reference package template, then run the
 pipeline on the included reference example:
 
 ```julia
-using SkeletonPackages
+using SkeletonizePackage
 
 create_assignment("MyAssignment"; ai_policy=:recorded)
 
@@ -50,7 +54,7 @@ grade_submission(
 )
 ```
 
-The generated skeleton keeps starter implementations and public tests, while
+The generated skeleton keeps scaffolding implementations and public tests, while
 removing solution blocks and hidden tests. It also adds
 `STUDENT_INSTRUCTIONS.md`, a generic guide for students who are new to Julia
 packages, local environments, dependency installation, and running tests. It
@@ -73,14 +77,14 @@ isvalid(report)
 Or use the small command-line entry point:
 
 ```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- validate examples/SortingAssignment
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate examples/SortingAssignment
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
 ```
 
-![SkeletonPackages.jl workflow pipeline](assets/workflow-pipeline.svg)
+![SkeletonizePackage.jl workflow pipeline](assets/workflow-pipeline.svg)
 
-At generation time, `SkeletonPackages.jl` keeps student-facing scaffolding in
+At generation time, `SkeletonizePackage.jl` keeps student-facing scaffolding in
 the skeleton and removes teacher-only reference material:
 
 ![Annotation transformation from reference package to skeleton package](assets/annotation-transform.svg)
@@ -92,7 +96,7 @@ function mysort(xs)
     @solution begin
         return sort(xs)
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: implement mysort")
     end
 end
@@ -113,12 +117,12 @@ Visible and hidden tests can be marked similarly:
 
 ```julia
 @student_test begin
-    @marks 1 "sorts a simple input"
+    @marks 1 "sorts a simple input" id="sort-simple"
     @test mysort([2,1]) == [1,2]
 end
 
 @hidden_test begin
-    @marks 1 "handles a longer hidden input"
+    @marks 1 "handles a longer hidden input" id="sort-hidden-longer"
     @test mysort([3,1,2]) == [1,2,3]
 end
 ```
@@ -132,15 +136,16 @@ Broader code requirements can be grouped similarly:
 ```julia
 @assignment_requirements begin
     @require exported(mysort)
-    @require docstring(mysort) marks=1 "documents mysort"
+    @require docstring(mysort) marks=1 id="mysort-docstring" "documents mysort"
     @forbid imports(DataFrames) zero_marks=true "does not use a shortcut package"
     @reference_test mysort generator=1:10
 end
 ```
 
-`marks=N` assigns marks to a required or forbidden property. `zero_marks=true` makes
-the property a whole-assignment gate: if it fails during grading, the student
-gets zero for the assignment.
+`id="..."` gives a criterion a stable identifier in `RUBRIC.md`, feedback, and
+the teacher grading plan. `marks=N` assigns marks to a required or forbidden
+property. `zero_marks=true` makes the property a whole-assignment gate: if it
+fails during grading, the student gets zero for the assignment.
 
 Reference tests can compare a submission against the teacher implementation
 during grading:
@@ -163,7 +168,7 @@ both source code and tests:
 Then generate the skeleton version:
 
 ```julia
-using SkeletonPackages
+using SkeletonizePackage
 
 generate_skeleton_package("SortingAssignment", "SortingAssignmentSkeleton"; force=true)
 ```
@@ -187,10 +192,12 @@ See `examples/SortingAssignment` for a minimal annotated reference package. It
 contains:
 
 - `@solution` code that runs in the reference package.
-- `@starter` code that appears in the generated skeleton package.
+- `@scaffolding` code that appears in the generated skeleton package.
 - `@student_test` tests that students can see.
 - `@hidden_test` tests that teachers can keep for grading.
 - `@marks` metadata that appears in the generated `RUBRIC.md`.
+- stable rubric IDs and teacher-facing `GRADING_PLAN.md` /
+  `TEACHER_CHECKLIST.md` files when using the scaffold.
 
 To create a new reference package template as step 0 of the pipeline:
 
@@ -200,10 +207,10 @@ create_assignment("MyAssignment"; ai_policy=:recorded)
 
 This writes a small package template, `README.md`, `student_notes.md`, public
 and hidden tests, rubric/property/reference-test examples, and a
-`SkeletonPackages.inc` config file. The config can be used directly:
+`SkeletonizePackage.inc` config file. The config can be used directly:
 
 ```julia
-generate_skeleton_package("MyAssignment/SkeletonPackages.inc")
+generate_skeleton_package("MyAssignment/SkeletonizePackage.inc")
 ```
 
 The config can also include exercise-specific student instructions:
@@ -223,7 +230,7 @@ assignment
 When `instructions_path` is set, that Markdown file is appended to the generated
 `STUDENT_INSTRUCTIONS.md` under an "Exercise-Specific Instructions" heading.
 Annotation blocks in the Markdown file are transformed in student mode, so
-`@starter` content is kept and `@solution` content is removed.
+`@scaffolding` content is kept and `@solution` content is removed.
 
 `ai_policy` controls the generated `AGENTS.md` file. It can be:
 
@@ -246,7 +253,7 @@ against the reference package rubric. The returned `GradeResult` includes:
 The CLI can write both outputs:
 
 ```bash
-julia --project -e 'using SkeletonPackages; exit(SkeletonPackages.main())' -- grade ReferencePackage SubmissionPackage --student-id s123 --report s123-feedback.md --csv marks.csv
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade ReferencePackage SubmissionPackage --student-id s123 --report s123-feedback.md --csv marks.csv
 ```
 
 ## Current status

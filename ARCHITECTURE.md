@@ -3,8 +3,8 @@ write a package, called `X.jl` here, and include annotations such as `@solution`
 and `@hidden_test` that identify parts of the package that should be hidden from
 students.
 
-`SkeletonPackages.jl` should take `X.jl` and create `Y.jl`, a functional starter
-package with the hidden components removed or replaced. The starter can include
+`SkeletonizePackage.jl` should take `X.jl` and create `Y.jl`, a functional scaffolding
+package with the hidden components removed or replaced. The scaffolding can include
 partial functions, partial tests, partial documentation, and other scaffolding
 that helps students without handing them the solution.
 
@@ -37,7 +37,7 @@ using public tests + hidden tests + behavioural checks.
 
 ```
 @solution      # teacher-only implementation
-@starter       # replacement shown to students
+@scaffolding       # replacement shown to students
 @hidden_test   # tests used for grading but not shown
 @student_test  # tests included in Y.jl
 ```

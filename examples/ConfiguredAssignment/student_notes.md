@@ -7,6 +7,6 @@ package appends this section to `STUDENT_INSTRUCTIONS.md`.
 Teachers can keep private notes here.
 end
 
-@starter begin
+@scaffolding begin
 Students should focus on whitespace handling and case normalization.
 end

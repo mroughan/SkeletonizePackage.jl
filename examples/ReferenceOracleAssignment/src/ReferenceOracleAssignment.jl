@@ -1,6 +1,6 @@
 module ReferenceOracleAssignment
 
-using SkeletonPackages
+using SkeletonizePackage
 
 export clamp01
 
@@ -13,7 +13,7 @@ function clamp01(x)
     @solution begin
         return clamp(x, 0, 1)
     end
-    @starter begin
+    @scaffolding begin
         error("TODO: implement clamp01")
     end
 end

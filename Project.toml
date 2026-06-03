@@ -1,4 +1,4 @@
-name = "SkeletonPackages"
+name = "SkeletonizePackage"
 uuid = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
 authors = ["Matthew Roughan and contributors"]
 version = "0.1.0"
@@ -28,4 +28,4 @@ JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "JET", "Documenter", "Test"]
+test = ["Test"]

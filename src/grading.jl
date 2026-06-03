@@ -35,6 +35,26 @@ struct PropertyCheckResult
 end
 
 """
+    CriterionResult
+
+Per-criterion grading outcome for one rubric item.
+
+`id` is the stable rubric identifier supplied by the teacher or generated from
+the criterion. `awarded` is the number of marks awarded for this criterion.
+"""
+struct CriterionResult
+    id::String
+    kind::Symbol
+    visibility::Symbol
+    points::Int
+    awarded::Int
+    description::String
+    passed::Bool
+    message::String
+    zero_marks::Bool
+end
+
+"""
     GradeResult
 
 Result returned by [`grade_submission`](@ref).
@@ -70,6 +90,7 @@ struct GradeResult
     csv_row::String
     reference_test_results::Vector{ReferenceTestResult}
     property_results::Vector{PropertyCheckResult}
+    criterion_results::Vector{CriterionResult}
 end
 
 function GradeResult(passed::Bool, exitcode::Int, stdout::String, stderr::String)
@@ -77,8 +98,8 @@ function GradeResult(passed::Bool, exitcode::Int, stdout::String, stderr::String
     awarded = Dict{String, Int}()
     total = 0
     header, row = _grade_csv(["student_id", "status", "total"], ["", passed ? "passed" : "failed", string(passed ? total : 0)])
-    report = _student_grade_report("", passed, exitcode, RubricItem[], ReferenceTestResult[], PropertyCheckResult[], awarded, possible, passed ? total : 0, total, passed, false, stdout, stderr)
-    return GradeResult(passed, exitcode, stdout, stderr, "", RubricItem[], awarded, possible, passed ? total : 0, total, report, header, row, ReferenceTestResult[], PropertyCheckResult[])
+    report = _student_grade_report("", passed, exitcode, RubricItem[], ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], awarded, possible, passed ? total : 0, total, passed, false, stdout, stderr)
+    return GradeResult(passed, exitcode, stdout, stderr, "", RubricItem[], awarded, possible, passed ? total : 0, total, report, header, row, ReferenceTestResult[], PropertyCheckResult[], CriterionResult[])
 end
 
 Base.isvalid(result::GradeResult) = result.passed
@@ -109,10 +130,10 @@ The result includes two grading outputs:
 - `csv_header` and `csv_row`, a CSV-friendly mark summary suitable for
   concatenating one row per student.
 
-Until the harness records per-rubric outcomes, marks are awarded all-or-nothing
-from the submission tests and executable reference tests. A passing submission
-gets all rubric marks; a failing submission gets zero, with stdout and stderr
-included in the report for diagnosis.
+The result records both category totals and per-criterion outcomes. Ordinary
+`@marks` criteria are awarded when the submission tests and executable reference
+tests pass. Marked `@require` and `@forbid` criteria are awarded independently,
+unless a failed `zero_marks=true` criterion zeros the whole assignment.
 
 # Example
 
@@ -167,16 +188,17 @@ function grade_submission(reference_path::AbstractString, submission_path::Abstr
         zeroed = any(result -> result.zero_marks && !result.passed, property_results)
         behavioral_passed = success(proc) && all(result -> result.passed, reference_results)
         passed = behavioral_passed && all(result -> result.passed || result.points == 0, property_results) && !zeroed
+        criterion_results = _criterion_results(rubric, property_results, reference_results, behavioral_passed, zeroed)
         possible = _rubric_points_by_category(rubric)
-        awarded = _awarded_points_by_category(rubric, property_results, behavioral_passed, zeroed)
+        awarded = _awarded_points_by_category(rubric, criterion_results)
         total_possible = sum(values(possible); init=0)
         total_awarded = sum(values(awarded); init=0)
         categories = sort(collect(keys(possible)))
         header_values = vcat(["student_id", "status"], categories, ["total"])
         row_values = vcat([String(student_id), passed ? "passed" : "failed"], [string(get(awarded, category, 0)) for category in categories], [string(total_awarded)])
         header, row = _grade_csv(header_values, row_values)
-        report = _student_grade_report(String(student_id), passed, proc.exitcode, rubric, reference_results, property_results, awarded, possible, total_awarded, total_possible, behavioral_passed, zeroed, stdout, stderr)
-        result = GradeResult(passed, proc.exitcode, stdout, stderr, String(student_id), rubric, awarded, possible, total_awarded, total_possible, report, header, row, reference_results, property_results)
+        report = _student_grade_report(String(student_id), passed, proc.exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, behavioral_passed, zeroed, stdout, stderr)
+        result = GradeResult(passed, proc.exitcode, stdout, stderr, String(student_id), rubric, awarded, possible, total_awarded, total_possible, report, header, row, reference_results, property_results, criterion_results)
         report_path === nothing || write(report_path, report)
         csv_path === nothing || _write_grade_csv(csv_path, header, row; append=append_csv)
         return result
@@ -298,7 +320,7 @@ end
 
 function _keep_body(macro_name, mode)
     if mode == "student"
-        return macro_name in ("@starter", "@student_test")
+        return macro_name in ("@scaffolding", "@student_test")
     else
         return macro_name in ("@solution", "@student_test", "@hidden_test")
     end
@@ -310,10 +332,10 @@ function _loadable_source(text, mode)
     i = 1
     while i <= length(lines)
         stripped = strip(lines[i])
-        if occursin(r"^(using|import)\s+SkeletonPackages\b", stripped)
+        if occursin(r"^(using|import)\s+SkeletonizePackage\b", stripped)
             i += 1
             continue
-        elseif stripped in ("@solution begin", "@starter begin", "@student_test begin", "@hidden_test begin")
+        elseif stripped in ("@solution begin", "@scaffolding begin", "@student_test begin", "@hidden_test begin")
             macro_name = split(stripped)[1]
             block, j = _collect_block(lines, i)
             _keep_body(macro_name, mode) && append!(out, block)
@@ -363,23 +385,44 @@ function _rubric_points_by_category(items::Vector{RubricItem})
     return points
 end
 
-function _awarded_points_by_category(rubric::Vector{RubricItem}, property_results::Vector{PropertyCheckResult}, behavioral_passed::Bool, zeroed::Bool)
-    possible = _rubric_points_by_category(rubric)
-    awarded = Dict(category => 0 for category in keys(possible))
-    zeroed && return awarded
+function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector{PropertyCheckResult}, reference_results::Vector{ReferenceTestResult}, behavioral_passed::Bool, zeroed::Bool)
+    results = CriterionResult[]
     property_queue = copy(property_results)
     for item in rubric
-        category = String(item.visibility)
-        item.kind == :marks && behavioral_passed && (awarded[category] = get(awarded, category, 0) + item.points)
-        if item.kind in (:require, :forbid)
+        if item.kind == :marks
+            passed = behavioral_passed && !zeroed
+            awarded = passed ? item.points : 0
+            message = zeroed ? "assignment zeroed by a gating requirement" : passed ? "behavioural tests passed" : "behavioural tests failed"
+            push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, awarded, item.description, passed, message, item.zero_marks))
+        elseif item.kind in (:require, :forbid)
             result = isempty(property_queue) ? nothing : popfirst!(property_queue)
-            result !== nothing && result.passed && (awarded[category] = get(awarded, category, 0) + item.points)
+            passed = result !== nothing && result.passed && !zeroed
+            awarded = passed ? item.points : 0
+            message = result === nothing ? "property was not evaluated" : result.message
+            zeroed && (message = "assignment zeroed by a gating requirement")
+            push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, awarded, item.description, passed, message, item.zero_marks))
+        elseif item.kind == :reference_test
+            related = [result for result in reference_results if result.visibility == item.visibility]
+            passed = !isempty(related) && all(result -> result.passed, related)
+            message = isempty(related) ? "reference test metadata only" : passed ? "all generated inputs matched" : "one or more generated inputs failed"
+            push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, 0, item.description, passed, message, item.zero_marks))
         end
+    end
+    return results
+end
+
+function _awarded_points_by_category(rubric::Vector{RubricItem}, criterion_results::Vector{CriterionResult})
+    possible = _rubric_points_by_category(rubric)
+    awarded = Dict(category => 0 for category in keys(possible))
+    for result in criterion_results
+        result.kind in (:marks, :require, :forbid) || continue
+        category = String(result.visibility)
+        awarded[category] = get(awarded, category, 0) + result.awarded
     end
     return awarded
 end
 
-function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, behavioral_passed::Bool, zeroed::Bool, stdout::String, stderr::String)
+function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, behavioral_passed::Bool, zeroed::Bool, stdout::String, stderr::String)
     io = IOBuffer()
     println(io, "# Student Feedback Report")
     println(io)
@@ -401,15 +444,15 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
     end
     println(io)
     println(io, "## Rubric Results")
-    marks = [item for item in rubric if item.kind == :marks]
-    if isempty(marks)
+    marked_results = [result for result in criterion_results if result.kind in (:marks, :require, :forbid)]
+    if isempty(marked_results)
         println(io)
         println(io, "No marked criteria were available.")
     else
-        for item in marks
-            item_awarded = behavioral_passed && !zeroed ? item.points : 0
+        for result in marked_results
             println(io)
-            println(io, "- [", item.visibility, "] ", item.description, ": ", item_awarded, " / ", item.points, " mark", item.points == 1 ? "" : "s")
+            zero_note = result.zero_marks ? " Zeroes assignment if failed." : ""
+            println(io, "- `", result.id, "` [", result.visibility, "] ", result.description, ": ", result.awarded, " / ", result.points, " mark", result.points == 1 ? "" : "s", ". ", result.message, ".", zero_note)
         end
     end
     properties = [item for item in rubric if item.kind != :marks]
@@ -464,8 +507,6 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
             println(io, "```")
         end
     end
-    println(io)
-    println(io, "_Per-criterion marks are currently inferred from the overall submission test result._")
     return String(take!(io))
 end
 

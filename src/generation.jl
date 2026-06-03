@@ -15,7 +15,7 @@ generated path is returned. Directories named `.git`, `build`, and `solutions`
 are skipped.
 
 Pass `instructions_path` to append exercise-specific teacher instructions to the
-generated `STUDENT_INSTRUCTIONS.md`. Relative paths in `SkeletonPackages.inc`
+generated `STUDENT_INSTRUCTIONS.md`. Relative paths in `SkeletonizePackage.inc`
 are resolved from the config file's directory.
 
 Every generated skeleton includes an `AGENTS.md` file. Set `ai_policy` to
@@ -45,7 +45,7 @@ true
 From a config file:
 
 ```julia
-julia> skeleton = generate_skeleton_package("examples/ConfiguredAssignment/SkeletonPackages.inc"; io=nothing);
+julia> skeleton = generate_skeleton_package("examples/ConfiguredAssignment/SkeletonizePackage.inc"; io=nothing);
 
 julia> endswith(skeleton, "ConfiguredAssignmentStudent")
 true
@@ -72,6 +72,7 @@ function generate_skeleton_package(reference_path::AbstractString, skeleton_path
         outroot = relroot == "." ? skeleton : joinpath(skeleton, relroot)
         mkpath(outroot)
         for file in files
+            file in TEACHER_ONLY_FILES && continue
             inpath = joinpath(root, file)
             outpath = joinpath(outroot, file)
             if any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS)

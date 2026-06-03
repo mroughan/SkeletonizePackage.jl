@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="260" viewBox="0 0 1120 260" role="img" aria-labelledby="title desc">
-  <title id="title">SkeletonPackages.jl workflow pipeline with setup step</title>
+  <title id="title">SkeletonizePackage.jl workflow pipeline with setup step</title>
   <desc id="desc">A teacher starts with a scaffolded assignment setup, edits a reference package, generates a student skeleton, receives a student submission, and grades it to produce feedback.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
