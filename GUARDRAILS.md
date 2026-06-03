@@ -19,7 +19,7 @@ The following file is a set of RULES that you MUST follow.
 
  + Review code for repeated patterns that could be combined into helper functions.
  + Every time a change is introduced write a test to validate the idea behind the change.
- 
+ + Only alter ARCHITECTURE.md when specifically instructed to alter it.
 
 ## Julia language-specific coding
 
