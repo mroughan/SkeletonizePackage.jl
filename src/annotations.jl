@@ -228,8 +228,9 @@ end
 
 const ANNOTATION_OPENERS = Set(["@solution", "@scaffolding", "@student_test", "@hidden_test"])
 const TEACHER_ONLY_DIRS = Set([".git", "build", "solutions", ".julia", ".CondaPkg"])
-const TEACHER_ONLY_FILES = Set(["GRADING_PLAN.md", "TEACHER_CHECKLIST.md"])
+const TEACHER_ONLY_FILES = Set(["GRADING_PLAN.md", "TEACHER_CHECKLIST.md", "student_notes.md"])
 const TRANSFORMED_EXTENSIONS = (".jl", ".md", ".toml", ".inc")
+const _RE_ANNOTATION_BLOCK_OPENER = r"^\s*(for|while|if|function|let|try|quote)\b|\bbegin\b|\bdo\s*$"
 
 """
     strip_reference_annotations(text::AbstractString; mode=:student)
@@ -308,9 +309,7 @@ function _collect_block(lines, start_i)
     i = start_i + 1
     while i <= length(lines)
         s = strip(lines[i])
-        if endswith(s, " begin") || occursin(r"\bbegin\b", s)
-            depth += count(==("begin"), split(s))
-        end
+        occursin(_RE_ANNOTATION_BLOCK_OPENER, s) && (depth += 1)
         if s == "end"
             depth -= 1
             if depth == 0

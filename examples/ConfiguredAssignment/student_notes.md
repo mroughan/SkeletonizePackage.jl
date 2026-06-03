@@ -1,4 +1,4 @@
-# Configured Assignment Notes
+## Configured Assignment Notes
 
 This example demonstrates exercise-specific instructions. The generated student
 package appends this section to `STUDENT_INSTRUCTIONS.md`.

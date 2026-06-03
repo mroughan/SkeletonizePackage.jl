@@ -609,6 +609,9 @@ function _categorize_failure(exitcode::Int, stdout::String, stderr::String, time
     if occursin(r"Package .* not found|cannot find package|not found in current path"i, combined)
         return (:load_failure, "package not found — check Project.toml dependencies")
     end
+    if occursin(r"Test Failed|Some tests did not pass"i, combined)
+        return (:test_failure, "tests failed with exit code $exitcode")
+    end
     if occursin(r"LoadError|ParseError|syntax: |UndefVarError.*top-level"i, stderr)
         return (:load_failure, _first_error_line(stderr))
     end

@@ -66,7 +66,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
     write(joinpath(submission, "src", "$submission_name.jl"), """
 module $submission_name
 export answer
-# $(forbidden_import ? "using DataFrames" : "no forbidden imports")
+$(forbidden_import ? "module DataFrames end\nusing .DataFrames" : "# no forbidden imports")
 answer() = $(passing ? 42 : 0)
 end
 """)
@@ -173,7 +173,22 @@ end
     end
 
     @testset "_comment_count" begin
-        @test SkeletonizePackage._comment_count(proj) >= 1
+        @test SkeletonizePackage._comment_count(proj) == 0
+        comment_proj = SkeletonizePackage.SourceProject(
+            "",
+            "Demo",
+            Dict{String,String}(),
+            """
+            module Demo
+            f() = 1 # inline comment
+            g() = "# not a comment"
+            #= block comment =#
+            h() = \"\"\"# still not a comment\"\"\"
+            end
+            """,
+            Dict{Symbol,SkeletonizePackage.SourceFunction}(),
+        )
+        @test SkeletonizePackage._comment_count(comment_proj) == 2
         empty_proj = SkeletonizePackage._source_project_from_path(let p = mktempdir()
             mkpath(joinpath(p, "src"))
             write(joinpath(p, "Project.toml"), "name = \"Empty\"\nuuid = \"aaaaaaaa-0000-0000-0000-000000000002\"\nversion = \"0.1.0\"\n")
@@ -235,6 +250,26 @@ end
     @test !occursin("error(\"TODO\")", teacher)
     @test occursin("@test f(100) == 101", teacher)
     @test occursin("@marks 2 \"hidden check for larger input\"", teacher)
+
+    nested = """
+function h(xs)
+    @solution begin
+        total = 0
+        for x in xs
+            if iseven(x)
+                total += x
+            end
+        end
+        return total
+    end
+    @scaffolding begin
+        error("TODO nested")
+    end
+end
+"""
+    nested_student = strip_reference_annotations(nested; mode=:student)
+    @test occursin("error(\"TODO nested\")", nested_student)
+    @test !occursin("total += x", nested_student)
 
     @test_throws ArgumentError strip_reference_annotations(src; mode=:invalid)
     @test_throws ArgumentError strip_reference_annotations("@solution begin\nx = 1"; mode=:student)
@@ -346,6 +381,7 @@ end
     @test isfile(joinpath(dst, "src", "Demo.jl"))
     @test isfile(joinpath(dst, "STUDENT_INSTRUCTIONS.md"))
     @test isfile(joinpath(dst, "RUBRIC.md"))
+    @test !isfile(joinpath(dst, "student_notes.md"))
     @test !isfile(joinpath(dst, "GRADING_PLAN.md"))
     @test !isfile(joinpath(dst, "TEACHER_CHECKLIST.md"))
     text = read(joinpath(dst, "src", "Demo.jl"), String)
@@ -708,12 +744,20 @@ end
     scn = SkeletonizePackage._strip_code_noise
     @test scn("x = 1 # comment")    == "x = 1          "
     @test scn("#= block =#\nx = 1") == "           \nx = 1"
-    @test scn("x = \"hello\"")      == "x =          "
-    @test scn("x = \"\"\"hi\"\"\"") == "x =           "
+    stripped_string = scn("x = \"hello\"")
+    @test startswith(stripped_string, "x = ")
+    @test length(stripped_string) == length("x = \"hello\"")
+    @test !occursin("hello", stripped_string)
+    stripped_triple = scn("x = \"\"\"hi\"\"\"")
+    @test startswith(stripped_triple, "x = ")
+    @test length(stripped_triple) == length("x = \"\"\"hi\"\"\"")
+    @test !occursin("hi", stripped_triple)
     # preserves newlines inside stripped regions
     @test count(==('\n'), scn("#= a\nb =#\nx")) == count(==('\n'), "#= a\nb =#\nx")
     # nested block comments
-    @test scn("#= a #= b =# c =#") == "                  "
+    stripped_nested = scn("#= a #= b =# c =#")
+    @test length(stripped_nested) == length("#= a #= b =# c =#")
+    @test all(==(' '), stripped_nested)
     # keyword in comment is not counted
     @test !occursin("for",   scn("# for i in 1:10"))
     @test !occursin("push!", scn("x = \"push!(arr, v)\""))

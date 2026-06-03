@@ -66,6 +66,7 @@ function generate_skeleton_package(reference_path::AbstractString, skeleton_path
     end
     mkpath(skeleton)
     rubric = _collect_rubric(reference)
+    instructions_source = instructions_path === nothing ? nothing : abspath(instructions_path)
     for (root, dirs, files) in walkdir(reference)
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
         relroot = relpath(root, reference)
@@ -74,6 +75,7 @@ function generate_skeleton_package(reference_path::AbstractString, skeleton_path
         for file in files
             file in TEACHER_ONLY_FILES && continue
             inpath = joinpath(root, file)
+            instructions_source !== nothing && abspath(inpath) == instructions_source && continue
             outpath = joinpath(outroot, file)
             if any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS)
                 text = read(inpath, String)

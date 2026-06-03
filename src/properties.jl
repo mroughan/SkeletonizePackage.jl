@@ -397,7 +397,59 @@ function _is_deterministic(caller::Module, function_name::Symbol)
 end
 
 function _comment_count(project::SourceProject)
-    return count(line -> startswith(strip(line), "#"), split(project.text, '\n'))
+    chars = collect(project.text)
+    n = length(chars)
+    count = 0
+    i = 1
+    while i <= n
+        c = chars[i]
+        if c == '"' && i + 2 <= n && chars[i+1] == '"' && chars[i+2] == '"'
+            i += 3
+            while i <= n
+                if i + 2 <= n && chars[i] == '"' && chars[i+1] == '"' && chars[i+2] == '"'
+                    i += 3
+                    break
+                end
+                i += 1
+            end
+        elseif c == '"'
+            i += 1
+            while i <= n
+                if chars[i] == '\\'
+                    i += 2
+                elseif chars[i] == '"'
+                    i += 1
+                    break
+                else
+                    i += 1
+                end
+            end
+        elseif c == '#' && i + 1 <= n && chars[i+1] == '='
+            count += 1
+            depth = 1
+            i += 2
+            while i <= n && depth > 0
+                if i + 1 <= n && chars[i] == '#' && chars[i+1] == '='
+                    depth += 1
+                    count += 1
+                    i += 2
+                elseif i + 1 <= n && chars[i] == '=' && chars[i+1] == '#'
+                    depth -= 1
+                    i += 2
+                else
+                    i += 1
+                end
+            end
+        elseif c == '#'
+            count += 1
+            while i <= n && chars[i] != '\n'
+                i += 1
+            end
+        else
+            i += 1
+        end
+    end
+    return count
 end
 
 function _lines_of_code(project::SourceProject)
