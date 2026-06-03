@@ -198,7 +198,7 @@ function grade_submission(
 
     rubric, reference_specs = _collect_rubric_and_specs(reference_path)
     test_expr = "include($(repr(abspath(selected_test_path))))"
-    cmd = `$(Base.julia_cmd()) --project=$(abspath(submission_path)) -e $test_expr`
+    cmd = `$( _julia_cmd_with_project(submission_path) ) -e $test_expr`
     stdout_path = tempname()
     stderr_path = tempname()
     try
@@ -290,7 +290,7 @@ function _evaluate_reference_spec(package_path::AbstractString, spec::ReferenceT
     write(script_path, _reference_eval_script())
     active_project = Base.active_project()
     grader_project = active_project === nothing ? "" : dirname(active_project)
-    cmd = `$(Base.julia_cmd()) --project=$(abspath(package_path)) $(script_path) $(abspath(package_path)) $(String(spec.function_name)) $(spec.input_expr) $(output_path) $(String(mode)) $(grader_project)`
+    cmd = `$( _julia_cmd_without_project() ) $(script_path) $(abspath(package_path)) $(String(spec.function_name)) $(spec.input_expr) $(output_path) $(String(mode)) $(grader_project)`
     try
         proc, timed_out = _run_with_timeout(cmd, devnull, stderr_path; timeout_seconds=timeout_seconds)
         if timed_out
@@ -322,6 +322,13 @@ and the submission package, and prevents student code from affecting the grader'
 """
 function _reference_eval_script()
     return raw"""
+package_path = ARGS[1]
+grader_project = ARGS[6]
+empty!(LOAD_PATH)
+push!(LOAD_PATH, package_path)
+isempty(grader_project) || push!(LOAD_PATH, grader_project)
+push!(LOAD_PATH, "@stdlib")
+
 using Serialization
 using TOML
 
@@ -386,13 +393,10 @@ function _loadable_source(text::AbstractString, mode::AbstractString)
     return join(out, "\n")
 end
 
-package_path = ARGS[1]
 function_name = Symbol(ARGS[2])
 input_expr = ARGS[3]
 output_path = ARGS[4]
 mode = ARGS[5]
-grader_project = ARGS[6]
-isempty(grader_project) || push!(LOAD_PATH, grader_project)
 module_name = Symbol(_project_name(package_path))
 source_path = joinpath(package_path, "src", string(module_name) * ".jl")
 source = _loadable_source(read(source_path, String), mode)
@@ -585,6 +589,31 @@ function _write_grade_csv(path::AbstractString, header::AbstractString, row::Abs
 end
 
 # ── Timeout helper ────────────────────────────────────────────────────────────
+
+function _julia_cmd_without_project()
+    args = String[]
+    skip_next = false
+    for arg in Base.julia_cmd().exec
+        if skip_next
+            skip_next = false
+            continue
+        elseif arg == "--project"
+            skip_next = true
+            continue
+        elseif startswith(arg, "--project=")
+            continue
+        end
+        push!(args, arg)
+    end
+    return Cmd(args)
+end
+
+function _julia_cmd_with_project(project_path::AbstractString)
+    args = String[]
+    append!(args, _julia_cmd_without_project().exec)
+    push!(args, "--project=$(abspath(project_path))")
+    return Cmd(args)
+end
 
 """
     _run_with_timeout(cmd, stdout_path, stderr_path; timeout_seconds) -> (proc, timed_out)

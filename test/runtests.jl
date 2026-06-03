@@ -984,3 +984,12 @@ assignment
 """)
     @test_throws ArgumentError SkeletonizePackage.read_assignment_config(config_path)
 end
+
+if get(ENV, "SKELETONIZE_RUN_QUALITY_TESTS", "true") == "true"
+    include("aqua.jl")
+    if VERSION.major == 1 && VERSION.minor == 12
+        include("jet.jl")
+    else
+        @info "Skipping JET static analysis outside Julia 1.12.x" VERSION
+    end
+end

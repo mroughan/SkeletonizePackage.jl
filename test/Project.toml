@@ -1,12 +1,17 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+IncCSV = "66f2fdda-89f9-4824-87f0-56b432c695d5"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 SkeletonizePackage = "c8e6063d-6c4e-4aa4-bd9b-3a45f2ad7dd1"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 Aqua = "0.8"
-JET = "0.11"
+IncCSV = "0.1"
+JET = "0.9, 0.10, 0.11"
 SkeletonizePackage = "0.1"
 Test = "1"
-julia = "1.12"
+julia = "1.10"
+
+[sources]
+IncCSV = {url = "https://github.com/mroughan/IncCSV.jl"}

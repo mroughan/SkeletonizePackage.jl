@@ -29,6 +29,8 @@ jobs:
       - uses: julia-actions/cache@v2
       - name: Run package tests
         shell: julia --color=yes {0}
+        env:
+          SKELETONIZE_RUN_QUALITY_TESTS: "false"
         run: |
           using Pkg
           Pkg.activate(; temp=true)
