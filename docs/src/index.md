@@ -107,7 +107,7 @@ reference = "examples/ThinAssignment"
 skeleton = "ThinAssignmentSkeleton"
 submission = "ThinAssignmentSubmission"
 
-validate_reference_package(reference; io=stdout)
+validate_reference_package(reference; io=stdout, run_tests=true)
 generate_skeleton_package(reference, skeleton; force=true)
 
 # In a real class, the student receives `skeleton`, edits it, and submits a copy.

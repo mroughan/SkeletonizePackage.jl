@@ -369,7 +369,7 @@ Each example has a complete `src/`, `test/`, `SkeletonizePackage.inc`,
 ```julia
 cp -r examples/StringProcessingAssignment MyNewAssignment
 # then edit Project.toml, src/, test/, student_notes.md
-validate_reference_package("MyNewAssignment"; io=stdout)
+validate_reference_package("MyNewAssignment"; io=stdout, run_tests=true)
 ```
 
 ## VS Code snippets
@@ -382,16 +382,17 @@ files. Available prefixes: `sol`, `scaff`, `stest`, `htest`, `marks`, `areqs`,
 ## Property checks
 
 `@require` and `@forbid` checks (`exported`, `calls`, `loop`, `imports`, etc.)
-run on the source text of the submission with comments and string literals
-pre-stripped, preventing false positives from keywords that appear only in
-comments or string values.
+are grading metadata. They run on the source text of the submission with
+comments and string literals pre-stripped, preventing false positives from
+keywords that appear only in comments or string values.
 
 ## Current status
 
 This is still an early package. Validation checks for blocking transformation
-errors and teaching-design warnings. Property checks use comment/string-stripped
-source text to avoid false positives. The transformer remains conservative:
-annotation macros must appear on their own line.
+errors and teaching-design warnings, and can warn when reference behavioural
+tests fail. Property checks use comment/string-stripped source text to avoid
+false positives. The transformer remains conservative: annotation macros must
+appear on their own line.
 
 ## AI use disclosure
 

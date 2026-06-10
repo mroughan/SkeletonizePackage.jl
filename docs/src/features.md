@@ -94,11 +94,11 @@ gives a compact preparation, skeleton-inspection, and grading checklist.
 ## Grade Submissions at Class Scale
 
 After students submit completed packages, use `grade_submission(...)` or the
-`grade` command to run the public, hidden, property, and reference-oracle checks
-against each submission. Grading produces a Markdown feedback report for the
-student and a CSV row that can be appended to a class marks spreadsheet. The
-programmatic result also returns per-criterion `CriterionResult` values, so you
-can build custom reporting or batch workflows on top.
+`grade` command to run the submission tests, source-property checks, and
+reference-oracle checks. Hidden rubric criteria remain visible in feedback
+without revealing private test code. Grading produces a Markdown feedback report
+for the student and a CSV row that can be appended to a class marks spreadsheet.
+The programmatic result also returns per-criterion `CriterionResult` values.
 
 ## Use Julia or the Command Line
 

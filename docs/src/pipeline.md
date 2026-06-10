@@ -170,7 +170,11 @@ and `write_teacher_checklist(...)`.
 Run validation before handing a skeleton to students:
 
 ```julia
-report = validate_reference_package("examples/SortingAssignment"; io=stdout)
+report = validate_reference_package(
+    "examples/SortingAssignment";
+    io=stdout,
+    run_tests=true,
+)
 isvalid(report)
 ```
 
@@ -200,7 +204,8 @@ result.student_report
 result.csv_row
 ```
 
-The first-pass grading harness summarizes marks by rubric visibility, such as
-`public` and `hidden`, and totals them at the end of the CSV row. Per-criterion
-marks are currently inferred from the overall submission test result; future
-hidden and reference-test execution can refine those outcomes.
+The grading harness summarizes marks by rubric visibility, such as `public` and
+`hidden`, and totals them at the end of the CSV row. Property and reference-test
+criteria are evaluated separately. Ordinary behavioural `@marks` criteria are
+currently inferred from the overall submission test result, so teachers should
+prefer one coherent marked behaviour per test block.

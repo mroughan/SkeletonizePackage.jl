@@ -97,6 +97,5 @@ granularity. Prefer one `@marks` line and one coherent behaviour per test block;
 split unrelated criteria into separate `@student_test` or `@hidden_test` blocks.
 
 Stable IDs can be supplied with `id="..."` on `@marks`, `@require`, and
-`@forbid`. IDs are useful in moderation, appeals, feedback reports, and teacher
-grading plans. If an ID is omitted, one is generated from the criterion
-metadata.
+`@forbid`. IDs are useful in moderation, appeals, feedback reports, and grading
+output. If an ID is omitted, one is generated from the criterion metadata.

@@ -57,7 +57,8 @@ The files show the main features:
 - `test/runtests.jl` contains public student tests, hidden teacher tests,
   rubric entries, source requirements, forbidden-source checks, and a hidden
   reference-oracle test.
-- `student_notes.md` is appended to the generated `STUDENT_INSTRUCTIONS.md`.
+- `student_notes.md` is included automatically in generated
+  `STUDENT_INSTRUCTIONS.md`.
 - `SkeletonizePackage.inc` configures skeleton generation, including the
   generated `AGENTS.md` AI-use policy.
 """)
