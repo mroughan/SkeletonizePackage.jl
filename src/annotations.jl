@@ -54,6 +54,8 @@ end
     end
 
 Mark tests that should be visible to students and also run for teachers.
+Generated Julia output wraps each kept block in a named `@testset`, using the
+first `@marks` description when present.
 
 # Example
 
@@ -73,8 +75,9 @@ end
         ...
     end
 
-Mark teacher-only grading tests. These tests are removed from skeleton packages
-but run normally in the annotated reference package.
+Mark teacher-only grading tests. These tests are removed from student skeletons
+but run normally in the annotated reference package and teacher-mode output.
+Teacher-mode Julia output wraps each block in a named `@testset`.
 
 # Example
 
@@ -95,6 +98,10 @@ end
 Attach rubric metadata to nearby tests. The macro is a runtime no-op so teacher
 and generated student tests can execute normally, while `generate_skeleton_package`
 extracts these lines into `RUBRIC.md`.
+
+Each `@marks` line creates a rubric criterion. The first description in a
+student or hidden test block also names its generated `@testset`. Prefer one
+coherent marked criterion per block.
 
 # Example
 
@@ -118,8 +125,9 @@ end
 """
     @require property(...) [marks=N] [zero_marks=true] [id="stable-id"] ["description"]
 
-Assert that a source-code property holds for the package under test. Intended
-for use inside `@student_test` or `@hidden_test` blocks.
+Record a source-code property that must hold for a student submission. The macro
+is a runtime no-op so the teacher reference may deliberately omit the property;
+grading evaluates it separately.
 
 # Example
 
@@ -130,8 +138,9 @@ for use inside `@student_test` or `@hidden_test` blocks.
 end
 ```
 
-If both checks pass, the surrounding testset passes. In the generated rubric the
-requirements are summarized as:
+Requirements are grading metadata and do not run as ordinary reference-package
+tests. During grading they are evaluated against the student submission. In the
+generated rubric they are summarized as:
 
 ```text
 - Requires (1 mark): exports the required function (must satisfy `exported(mysort)`)
@@ -142,14 +151,14 @@ During grading, `marks=N` awards marks for the property itself. `zero_marks=true
 turns a failed property into a whole-assignment zeroing condition.
 """
 macro require(spec, args...)
-    return esc(:(@test SkeletonizePackage._check_property($__module__, :require, $(QuoteNode(spec)))))
+    return :(nothing)
 end
 
 """
     @forbid property(...) [marks=N] [zero_marks=true] [id="stable-id"] ["description"]
 
-Assert that a source-code property does not hold for the package under test.
-Intended for use inside `@student_test` or `@hidden_test` blocks.
+Record a source-code property that must not hold for a student submission. The
+macro is a runtime no-op; grading evaluates it separately.
 
 # Example
 
@@ -160,12 +169,11 @@ Intended for use inside `@student_test` or `@hidden_test` blocks.
 end
 ```
 
-If either forbidden property is present, the generated test fails.
-During grading, the `zero_marks=true` example gives zero for the whole assignment if
-the submitted source imports `DataFrames`.
+During grading, the `zero_marks=true` example gives zero for the whole assignment
+if the submitted source imports `DataFrames`.
 """
 macro forbid(spec, args...)
-    return esc(:(@test SkeletonizePackage._check_property($__module__, :forbid, $(QuoteNode(spec)))))
+    return :(nothing)
 end
 
 """
@@ -174,6 +182,9 @@ end
     end
 
 Group source-code requirements and reference-test metadata in a test file.
+The block is a runtime no-op so a reference solution may deliberately omit
+student-facing properties such as exports or docstrings. Grading evaluates the
+recorded requirements against submissions separately.
 
 # Example
 
@@ -194,7 +205,7 @@ Generated rubric excerpt:
 ```
 """
 macro assignment_requirements(block)
-    return esc(block)
+    return :(nothing)
 end
 
 """
@@ -233,8 +244,12 @@ const TEACHER_ONLY_FILES = Set(["GRADING_PLAN.md", "TEACHER_CHECKLIST.md", "stud
 const TRANSFORMED_EXTENSIONS = (".jl", ".md", ".toml", ".inc")
 const _RE_ANNOTATION_BLOCK_OPENER = r"^\s*(for|while|if|function|let|try|quote)\b|\bbegin\b|\bdo\s*$"
 
+_is_teacher_only_file(file::AbstractString) =
+    file in TEACHER_ONLY_FILES || endswith(file, "~") ||
+    (startswith(file, "#") && endswith(file, "#"))
+
 """
-    strip_reference_annotations(text::AbstractString; mode=:student)
+    strip_reference_annotations(text::AbstractString; mode=:student, testsets=false)
 
 Transform annotated Julia source text.
 
@@ -242,6 +257,9 @@ For `mode = :student`, remove `@solution` and `@hidden_test` regions, and keep
 the bodies of `@scaffolding` and `@student_test` regions. For `mode = :teacher`,
 keep `@solution`, `@student_test`, and `@hidden_test` bodies, and remove
 `@scaffolding` regions.
+
+With `testsets=true`, kept student and hidden test blocks are wrapped in named
+`@testset`s. Generation enables this for transformed Julia files.
 
 This implementation is intentionally line-oriented. Annotation macros must
 appear on their own line as `@solution begin`, `@scaffolding begin`,
@@ -272,7 +290,7 @@ function f()
 end
 ```
 """
-function strip_reference_annotations(text::AbstractString; mode::Symbol=:student)
+function strip_reference_annotations(text::AbstractString; mode::Symbol=:student, testsets::Bool=false)
     lines = split(String(text), '\n'; keepempty=true)
     out = String[]
     i = 1
@@ -283,7 +301,11 @@ function strip_reference_annotations(text::AbstractString; mode::Symbol=:student
             macro_name = split(stripped)[1]
             block, j = _collect_block(lines, i)
             if _keep_body(macro_name, mode)
-                append!(out, block)
+                if testsets && macro_name in ("@student_test", "@hidden_test")
+                    append!(out, _testset_block(line, macro_name, block))
+                else
+                    append!(out, block)
+                end
             end
             i = j + 1
         else
@@ -292,6 +314,17 @@ function strip_reference_annotations(text::AbstractString; mode::Symbol=:student
         end
     end
     return join(out, "\n")
+end
+
+function _testset_block(opener::AbstractString, macro_name::AbstractString, block)
+    indent = first(opener, findfirst(!=(' '), opener) === nothing ? 0 : findfirst(!=(' '), opener) - 1)
+    default = macro_name == "@student_test" ? "Student tests" : "Hidden tests"
+    label = default
+    for line in block
+        marks = _parse_marks_line(strip(line))
+        marks === nothing || (label = marks.description; break)
+    end
+    return vcat(["$(indent)@testset $(repr(label)) begin"], block, ["$(indent)end"])
 end
 
 function _keep_body(macro_name::AbstractString, mode::Symbol)

@@ -44,6 +44,7 @@ The generated skeleton is the package distributed to students:
 ```text
 SortingAssignmentSkeleton/
   Project.toml
+  README.md
   STUDENT_INSTRUCTIONS.md
   AGENTS.md
   RUBRIC.md
@@ -87,7 +88,8 @@ generate_skeleton_package("SkeletonizePackage.inc")
 `reference_path`, `skeleton_path`, `mode`, `force`, `validate`, and `ai_policy`
 belong under `[assignment]`. `instructions_path` and `ai_policy` may also be
 placed under `[student]`. Relative paths are resolved from the config file's
-directory.
+directory. If `instructions_path` is omitted and the reference package contains
+`student_notes.md`, it is included automatically.
 
 `ai_policy` controls the generated `AGENTS.md` file:
 
@@ -105,8 +107,8 @@ The supported annotations are:
 @student_test  # tests included in the generated skeleton
 @hidden_test   # teacher-only grading tests
 @marks         # rubric metadata attached to nearby tests
-@require       # code property that must hold
-@forbid        # code property that must not hold
+@require       # grading metadata: code property that must hold
+@forbid        # grading metadata: code property that must not hold
 ```
 
 Annotation openers must appear on their own line:
@@ -131,25 +133,31 @@ end
 
 The generated skeleton package includes `RUBRIC.md`. Hidden test code remains
 private, but the `@marks` description tells students what behaviour will be
-graded.
+graded. Generated test blocks become named `@testset`s. Prefer one coherent
+`@marks` criterion per block.
 
 ## Skeleton Generation
 
 `generate_skeleton_package` copies a Julia package, transforms `.jl`, `.md`,
 `.toml`, and `.inc` files, and skips teacher-only directories such as `.git`,
-`build`, and `solutions`.
+`build`, and `solutions`. Common editor backup files ending in `~` or wrapped in
+`#...#` are also omitted.
 
 For `mode = :student`, it removes `@solution` and `@hidden_test` bodies, and
 keeps `@scaffolding` and `@student_test` bodies. For `mode = :teacher`, it keeps
 `@solution`, `@student_test`, and `@hidden_test` bodies, and removes
-`@scaffolding` bodies.
+`@scaffolding` bodies. In transformed Julia files, kept test blocks become named
+`@testset`s.
 
 If the destination exists, pass `force=true`.
 
 Generation also writes:
 
+- `README.md`, identifying the package as a student skeleton and directing
+  students to the generated Markdown guidance.
 - `STUDENT_INSTRUCTIONS.md`, with generic package workflow guidance plus any
-  configured exercise notes.
+  configured exercise notes and a layout describing copied directories such as
+  `data/`.
 - `RUBRIC.md`, generated from `@marks`, `@require`, and `@forbid`.
 - `AGENTS.md`, generated from `ai_policy` with explicit AI-use instructions.
 
@@ -168,7 +176,11 @@ isvalid(report)
 
 Validation errors block generation when `validate=true`. Warnings and notes are
 teacher-facing design feedback, for example missing public tests, hidden tests,
-or scaffolding blocks that do not look like student prompts.
+scaffolding blocks that do not look like student prompts, annotated source files
+that are not included by the package, or package/module naming mismatches.
+Generation and the `validate` command also run the reference behavioural tests
+and warn when they fail. For direct API calls, request this explicitly with
+`validate_reference_package(path; run_tests=true)`.
 
 `grade_submission` runs a submission package's tests in an isolated Julia
 process and returns a `GradeResult`. The result contains `student_report` for

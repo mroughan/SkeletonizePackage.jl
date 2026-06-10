@@ -143,6 +143,7 @@ end
 function _write_student_instructions(dst::AbstractString; instructions_path::Union{Nothing, AbstractString}=nothing)
     package_name = _project_name(dst)
     exercise_instructions = _exercise_instructions(instructions_path)
+    package_layout = _student_package_layout(dst)
     write(joinpath(dst, "STUDENT_INSTRUCTIONS.md"), """
 # Getting Started with `$package_name`
 
@@ -156,15 +157,15 @@ A standard Julia package usually has this structure:
 
 ```text
 $package_name/
-  Project.toml          package name, UUID, dependencies, and compatibility
-  src/                  source code for the package
-  test/                 tests you can run while working
-  README.md             assignment-specific notes, if provided
+$package_layout
 ```
 
 Most assignments ask you to edit files under `src/`. Tests usually live in
 `test/runtests.jl`. Do not change `Project.toml` unless the assignment or teacher
 explicitly asks you to add dependencies.
+
+Other directories, such as `data/`, contain assignment resources supplied by
+your teacher. Read the exercise-specific instructions before changing them.
 
 ## Opening Julia in the Package Environment
 
@@ -217,6 +218,13 @@ Pkg.test()
 
 Tests are your fastest feedback loop. Run them after each small change.
 
+## Understanding Marks
+
+Read [`RUBRIC.md`](RUBRIC.md) before starting. It explains how marks are
+allocated across public tests, hidden tests, and source-code requirements.
+Passing the visible tests is important, but hidden criteria and requirements
+such as exports or docstrings may also carry marks.
+
 ## Editing and Reloading Code
 
 Edit the files in `src/`, save them, and rerun the tests. If you are working in a
@@ -249,6 +257,54 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 
 Submit the completed package folder according to your teacher's instructions.
 $(exercise_instructions)
+""")
+end
+
+function _student_package_layout(dst::AbstractString)
+    descriptions = Dict(
+        "src" => "source code for the package",
+        "test" => "public tests you can run while working",
+        "data" => "data files and assignment resources",
+        "docs" => "additional documentation, if provided",
+    )
+    entries = String[]
+    for name in sort(readdir(dst))
+        path = joinpath(dst, name)
+        isdir(path) || continue
+        startswith(name, ".") && continue
+        description = get(descriptions, name, "additional assignment files")
+        label = rpad(name * "/", 22)
+        push!(entries, "  $label$description")
+    end
+    pushfirst!(entries, "  Project.toml          package name, UUID, dependencies, and compatibility")
+    push!(entries, "  README.md             overview and links to assignment guidance")
+    return join(entries, "\n")
+end
+
+function _default_instructions_path(reference::AbstractString, instructions_path)
+    instructions_path !== nothing && return abspath(instructions_path)
+    default = joinpath(reference, "student_notes.md")
+    return isfile(default) ? default : nothing
+end
+
+function _write_student_readme(dst::AbstractString)
+    package_name = _project_name(dst)
+    write(joinpath(dst, "README.md"), """
+# `$package_name` Student Skeleton
+
+This package is the student skeleton for an assignment. It contains the starter
+code and public tests intended for students; teacher solutions and hidden test
+implementations have been removed.
+
+Start with these documents:
+
+- [`STUDENT_INSTRUCTIONS.md`](STUDENT_INSTRUCTIONS.md) explains the assignment,
+  package workflow, and how to run the tests.
+- [`RUBRIC.md`](RUBRIC.md) describes the generated grading criteria.
+- [`AGENTS.md`](AGENTS.md) states the assignment's AI-use policy.
+
+Most implementation work belongs under `src/`. Run the public tests with
+`julia --project=. -e 'using Pkg; Pkg.test()'`.
 """)
 end
 
@@ -355,9 +411,9 @@ end
 
 Write a teacher-facing Markdown grading plan for a reference package.
 
-The plan includes stable criterion IDs, public and hidden criteria, code
-property checks, zero-mark gates, and source locations. It is teacher-only and
-is not copied into generated student skeletons.
+The plan gives a broad summary of the assessment design. Detailed criteria are
+derived from `@marks`, `@require`, and `@forbid` blocks and written to the
+generated rubric. It is teacher-only and is not copied into student skeletons.
 """
 function write_grading_plan(reference_path::AbstractString; plan_path::AbstractString=joinpath(reference_path, "GRADING_PLAN.md"), items=nothing)
     rubric = items === nothing ? _collect_rubric(reference_path) : items
@@ -368,27 +424,26 @@ function write_grading_plan(reference_path::AbstractString; plan_path::AbstractS
     println(io, "Reference package: `", _project_name(reference_path), "`")
     println(io, "Total marked points: ", total)
     println(io)
-    println(io, "This file is for teachers. It includes hidden criteria and stable rubric IDs.")
+    println(io, "This file records the broad assessment design. Maintain detailed")
+    println(io, "criteria beside tests using `@marks`, `@require`, and `@forbid`;")
+    println(io, "those annotations generate `RUBRIC.md` and drive grading.")
+    println(io)
+    println(io, "## Assessment Summary")
     println(io)
     for visibility in (:public, :hidden)
-        println(io, "## ", uppercasefirst(String(visibility)), " Criteria")
         selected = [item for item in rubric if item.visibility == visibility]
-        if isempty(selected)
-            println(io)
-            println(io, "No criteria.")
-        else
-            for item in selected
-                println(io)
-                println(io, "- ID: `", item.id, "`")
-                println(io, "  Kind: `", item.kind, "`")
-                println(io, "  Points: ", item.points)
-                println(io, "  Description: ", item.description)
-                println(io, "  Source: `", item.path, ":", item.line, "`")
-                item.zero_marks && println(io, "  Zero gate: yes")
-            end
-        end
-        println(io)
+        points = sum(item.points for item in selected if _is_scored_criterion(item.kind))
+        scored = count(item -> _is_scored_criterion(item.kind) && item.points > 0, selected)
+        checks = count(item -> item.kind != :marks, selected)
+        println(io, "- ", uppercasefirst(String(visibility)), ": ", points, " points across ", scored, " scored criteria; ", checks, " property/reference checks.")
     end
+    zero_gates = count(item -> item.zero_marks, rubric)
+    println(io, "- Whole-assignment zero gates: ", zero_gates)
+    println(io)
+    println(io, "## Design Notes")
+    println(io)
+    println(io, "Describe the intended balance of knowledge, implementation, testing,")
+    println(io, "documentation, and any important grading policy here.")
     write(plan_path, String(take!(io)))
     return plan_path
 end
@@ -410,6 +465,8 @@ Use this checklist before distributing the generated student skeleton.
 - [ ] Edit the reference package name, source code, tests, and assignment notes.
 - [ ] Replace scaffolding placeholders with useful student prompts.
 - [ ] Check that every marked criterion has a clear description and stable ID.
+- [ ] Run the reference package tests; all public and hidden behavioural tests should pass.
+- [ ] Remember that `@assignment_requirements` may deliberately be unmet by the reference.
 - [ ] Decide whether AI use is `forbidden`, `recorded`, or `allowed` in `SkeletonizePackage.inc`.
 - [ ] Run `validate_reference_package(...)` and resolve all errors.
 

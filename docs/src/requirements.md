@@ -20,9 +20,11 @@ block:
 end
 ```
 
-The generated skeleton package keeps these checks in its visible tests when they
-are in student-visible code. It also records them in `RUBRIC.md`, including
-requirements that appear inside hidden test blocks.
+All `@require` and `@forbid` declarations are grading metadata: they do not run
+as ordinary reference-package tests, and are evaluated against submissions
+during grading. This allows a teacher reference implementation to deliberately
+omit a required student export, docstring, or other source property. All public and hidden
+behavioural tests should still pass for the reference package.
 
 ## Marks and Zeroing Conditions
 
@@ -39,9 +41,9 @@ Those marks are included in the generated `RUBRIC.md` and in the grading CSV.
 They are awarded only when the property passes.
 
 Add `id="..."` to `@marks`, `@require`, or `@forbid` when you want a stable
-criterion identifier. IDs appear in `RUBRIC.md`, `GRADING_PLAN.md`, and student
-feedback reports. If an ID is omitted, `SkeletonizePackage.jl` generates one from
-the visibility, criterion kind, line order, and description.
+criterion identifier. IDs appear in `RUBRIC.md`, grading results, and student
+feedback reports. If an ID is omitted, `SkeletonizePackage.jl` generates one
+from the visibility, criterion kind, line order, and description.
 
 A property can also be a whole-assignment gate:
 

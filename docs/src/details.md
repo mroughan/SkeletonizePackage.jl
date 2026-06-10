@@ -8,8 +8,9 @@ transform. That keeps generated packages readable and avoids surprising edits
 outside marked regions.
 
 The validation step checks annotated files before and after transformation so
-broken generated Julia source is caught early. It also reports teaching-design
-warnings, such as a solution block without nearby scaffolding code.
+broken generated Julia source is caught early. It also checks package/module
+wiring and reports teaching-design warnings, such as an annotated source file
+that is not included or a solution block without nearby scaffolding code.
 
 The broader grading philosophy is behavioural rather than textual: submission
 packages should be checked using public tests, hidden tests, reference
@@ -40,12 +41,14 @@ end
 ```
 
 Supported annotations are `@solution`, `@scaffolding`, `@student_test`, and
-`@hidden_test`.
+`@hidden_test`. Rubric and grading metadata use `@marks`, `@require`, `@forbid`,
+`@assignment_requirements`, and `@reference_test`.
 
 The transformer preserves the body of a kept annotation and removes both the
 annotation opener and its matching closing `end`. This means the contents of
 each block should be valid in the surrounding file after the annotation wrapper
-is gone.
+is gone. During package generation, kept Julia test blocks are additionally
+wrapped in named `@testset`s.
 
 ## Configuration Files
 
@@ -60,6 +63,10 @@ The `ai_policy` setting may be `forbidden`, `recorded`, or `allowed`. It
 controls the generated `AGENTS.md` file in the student skeleton. This file is
 not a technical security mechanism; it is an explicit instruction and audit
 record that makes the teacher's AI-use rule unambiguous.
+
+`instructions_path` selects exercise-specific Markdown for
+`STUDENT_INSTRUCTIONS.md`. If omitted, a root `student_notes.md` is used
+automatically when present.
 
 ## Rubric Generation
 
@@ -82,6 +89,12 @@ end
 `SkeletonizePackage.jl` extracts those entries into `RUBRIC.md`, split into
 public and hidden criteria. This gives students the grading contract without
 revealing private test implementations.
+
+Each generated public or teacher-mode test block becomes a named `@testset`,
+using the first `@marks` description as its name. Each `@marks` line creates a
+rubric criterion, but behavioural marks are currently awarded at whole-test-run
+granularity. Prefer one `@marks` line and one coherent behaviour per test block;
+split unrelated criteria into separate `@student_test` or `@hidden_test` blocks.
 
 Stable IDs can be supplied with `id="..."` on `@marks`, `@require`, and
 `@forbid`. IDs are useful in moderation, appeals, feedback reports, and teacher

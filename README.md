@@ -21,9 +21,9 @@ skeleton to create their submission package.
 - Write one annotated reference package, then generate the student skeleton from
   it. Students see scaffolding and public tests; teacher solutions and hidden
   tests stay private.
-- Generate the useful paperwork automatically: student instructions, a
-  student-facing rubric, an AI-use policy file, a teacher grading plan, and a
-  preparation checklist.
+- Generate the useful paperwork automatically: a student-skeleton README,
+  student instructions, a student-facing rubric, an AI-use policy file, a broad
+  teacher grading plan, and a preparation checklist.
 - Attach marks directly to tests and code requirements, give criteria stable
   IDs, and turn serious shortcut violations into whole-assignment zero gates
   when needed.
@@ -51,7 +51,7 @@ reference = "examples/SortingAssignment"
 skeleton = "SortingAssignmentSkeleton"
 submission = "SortingAssignmentSubmission"
 
-validate_reference_package(reference; io=stdout)
+validate_reference_package(reference; io=stdout, run_tests=true)
 generate_skeleton_package(reference, skeleton; force=true)
 grade_submission(
     reference,
@@ -63,11 +63,10 @@ grade_submission(
 ```
 
 The generated skeleton keeps scaffolding implementations and public tests, while
-removing solution blocks and hidden tests. It also adds
-`STUDENT_INSTRUCTIONS.md`, a generic guide for students who are new to Julia
-packages, local environments, dependency installation, and running tests. It
-also writes `AGENTS.md`, which records the teacher's AI-use policy for the
-assignment.
+removing solution blocks and hidden tests. It also writes a student-skeleton
+`README.md`, `STUDENT_INSTRUCTIONS.md`, `RUBRIC.md`, and `AGENTS.md`. The
+instructions explain package workflows, marks, and copied directories such as
+`data/`.
 
 If the skeleton destination already exists, pass `force=true`:
 
@@ -78,9 +77,17 @@ generate_skeleton_package("examples/SortingAssignment", "SortingAssignmentSkelet
 You can also validate the reference package before generating:
 
 ```julia
-report = validate_reference_package("examples/SortingAssignment"; io=stdout)
+report = validate_reference_package(
+    "examples/SortingAssignment";
+    io=stdout,
+    run_tests=true,
+)
 isvalid(report)
 ```
+
+Generation and the CLI `validate` command run reference behavioural tests
+automatically and warn when a public or hidden test fails. Direct API validation
+only runs tests when `run_tests=true`.
 
 Or use the small command-line entry point:
 
@@ -137,7 +144,9 @@ end
 
 `@marks` is rubric metadata. It is a runtime no-op, but generated skeleton
 packages include a `RUBRIC.md` file summarizing public and hidden grading
-criteria without revealing hidden test code.
+criteria without revealing hidden test code. Generated test blocks become named
+`@testset`s using their first `@marks` description. Prefer one coherent marked
+criterion per block.
 
 Broader code requirements can be grouped similarly:
 
@@ -151,9 +160,13 @@ end
 ```
 
 `id="..."` gives a criterion a stable identifier in `RUBRIC.md`, feedback, and
-the teacher grading plan. `marks=N` assigns marks to a required or forbidden
-property. `zero_marks=true` makes the property a whole-assignment gate: if it
-fails during grading, the student gets zero for the assignment.
+grading output. `marks=N` assigns marks to a required or forbidden property.
+`zero_marks=true` makes the property a whole-assignment gate: if it fails during
+grading, the student gets zero for the assignment.
+
+`@require`, `@forbid`, and `@assignment_requirements` are grading metadata and
+runtime no-ops. A reference solution may deliberately omit a student-required
+export or docstring; all public and hidden behavioural tests should still pass.
 
 Reference tests can compare a submission against the teacher implementation
 during grading:
@@ -205,7 +218,8 @@ contains:
 - `@hidden_test` tests that teachers can keep for grading.
 - `@marks` metadata that appears in the generated `RUBRIC.md`.
 - stable rubric IDs and teacher-facing `GRADING_PLAN.md` /
-  `TEACHER_CHECKLIST.md` files when using the scaffold.
+  `TEACHER_CHECKLIST.md` files when using the scaffold. The grading plan records
+  broad assessment design; detailed criteria live beside tests.
 
 To create a new reference package template as step 0 of the pipeline:
 
@@ -236,9 +250,11 @@ assignment
 ```
 
 When `instructions_path` is set, that Markdown file is appended to the generated
-`STUDENT_INSTRUCTIONS.md` under an "Exercise-Specific Instructions" heading.
-Annotation blocks in the Markdown file are transformed in student mode, so
-`@scaffolding` content is kept and `@solution` content is removed.
+`STUDENT_INSTRUCTIONS.md` under an "Exercise-Specific Instructions" heading. If
+it is omitted and the reference root contains `student_notes.md`, that file is
+included automatically. Annotation blocks in the Markdown file are transformed
+in student mode, so `@scaffolding` content is kept and `@solution` content is
+removed.
 
 `ai_policy` controls the generated `AGENTS.md` file. It can be:
 

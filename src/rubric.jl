@@ -80,7 +80,7 @@ function _collect_rubric_and_specs(reference_path::AbstractString)
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
         relroot = relpath(walkroot, root)
         for file in files
-            file in TEACHER_ONLY_FILES && continue
+            _is_teacher_only_file(file) && continue
             any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS) || continue
             path = joinpath(walkroot, file)
             rel = relroot == "." ? file : joinpath(relroot, file)
@@ -142,7 +142,9 @@ function _write_rubric(dst::AbstractString, items::Vector{RubricItem})
 This rubric is generated from `@marks` entries embedded beside the assignment
 tests. Public criteria correspond to tests you can run in this skeleton. Hidden
 criteria describe additional grading behaviour without revealing the private
-test cases.
+test cases. Each `@marks` line creates a separate criterion. Test blocks are
+shown as named testsets using their first marks description; teachers are
+encouraged to keep one coherent marked criterion per block.
 
 Total: $total marks
 

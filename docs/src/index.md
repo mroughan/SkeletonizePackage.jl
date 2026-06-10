@@ -46,7 +46,11 @@ using SkeletonizePackage
 
 create_assignment("MyAssignment"; ai_policy=:recorded)
 
-report = validate_reference_package("examples/SortingAssignment"; io=stdout)
+report = validate_reference_package(
+    "examples/SortingAssignment";
+    io=stdout,
+    run_tests=true,
+)
 isvalid(report)
 
 skeleton = generate_skeleton_package(
@@ -67,18 +71,18 @@ result = grade_submission(
 
 Skeleton packages keep `@scaffolding` and `@student_test` bodies. Reference packages
 keep `@solution`, `@student_test`, and `@hidden_test` bodies. Generated skeleton
-packages also include `STUDENT_INSTRUCTIONS.md`, a generic guide for students
-who are new to Julia package workflows, and `RUBRIC.md`, the student-facing
-grading contract. They also include `AGENTS.md`, generated from the configured
-AI-use policy. Grading writes a Markdown feedback report for the student and a
-CSV row that can be appended to a class marks file.
+packages also include a student-skeleton `README.md`, `STUDENT_INSTRUCTIONS.md`,
+`RUBRIC.md`, and `AGENTS.md`. Instructions describe copied directories such as
+`data/`, explain marks, and direct students to the rubric. Grading writes a
+Markdown feedback report for the student and a CSV row that can be appended to a
+class marks file.
 
 ## Example 1 - Very Thin Example
 
 `examples/ThinAssignment` shows the smallest useful pattern: one exported
 function, one reference solution, one scaffolding placeholder, one public test, and
 one hidden test. Tests can also carry `@marks` lines that become the generated
-skeleton `RUBRIC.md`.
+skeleton `RUBRIC.md`; generated test blocks become named `@testset`s.
 
 ```julia
 function double_it(x)
@@ -187,7 +191,8 @@ generate_skeleton_package(config; io=stdout)
 ```
 
 `instructions_path` points to exercise-specific Markdown that is transformed in
-student mode before being appended to `STUDENT_INSTRUCTIONS.md`. `ai_policy`
+student mode before being appended to `STUDENT_INSTRUCTIONS.md`. When omitted,
+`student_notes.md` in the reference root is included automatically. `ai_policy`
 can be `forbidden`, `recorded`, or `allowed`; it controls the generated
 `AGENTS.md` file in the student skeleton.
 
@@ -196,6 +201,7 @@ The generated configured skeleton contains:
 ```text
 ConfiguredAssignmentStudent/
   Project.toml
+  README.md
   STUDENT_INSTRUCTIONS.md
   AGENTS.md
   RUBRIC.md

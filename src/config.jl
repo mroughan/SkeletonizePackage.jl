@@ -7,8 +7,10 @@ skeleton package.
 Use [`read_assignment_config`](@ref) or pass a `SkeletonizePackage.inc` file to
 [`generate_skeleton_package`](@ref) to construct this from INC metadata.
 `instructions_path` is optional and points to Markdown that should be appended
-to the generated student instructions. `ai_policy` controls the generated
-`AGENTS.md` file and must be one of `:forbidden`, `:recorded`, or `:allowed`.
+to the generated student instructions. When it is `nothing`, generation uses a
+root `student_notes.md` automatically when available. `ai_policy` controls the
+generated `AGENTS.md` file and must be one of `:forbidden`, `:recorded`, or
+`:allowed`.
 
 # Example
 
@@ -57,7 +59,8 @@ config
 assignment
 ```
 
-`instructions_path` may also be placed under `[student]`.
+`instructions_path` may also be placed under `[student]`. If omitted, generation
+automatically uses `student_notes.md` from the reference root when it exists.
 
 # Example
 

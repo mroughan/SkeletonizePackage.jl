@@ -12,15 +12,18 @@ block generation; warnings and notes are printed to `io`.
 
 Existing contents of `skeleton_path` are preserved unless `force=true`. The
 generated path is returned. Directories named `.git`, `build`, and `solutions`
-are skipped.
+are skipped, along with common editor backup files ending in `~` or wrapped in
+`#...#`.
 
 Pass `instructions_path` to append exercise-specific teacher instructions to the
-generated `STUDENT_INSTRUCTIONS.md`. Relative paths in `SkeletonizePackage.inc`
-are resolved from the config file's directory.
+generated `STUDENT_INSTRUCTIONS.md`. If it is omitted and `student_notes.md`
+exists in the reference root, that file is included automatically. Relative
+paths in `SkeletonizePackage.inc` are resolved from the config file's directory.
 
 Every generated skeleton includes an `AGENTS.md` file. Set `ai_policy` to
 `:forbidden`, `:recorded`, or `:allowed` to control the student-facing AI-agent
-instructions.
+instructions. Student-mode generation also writes a skeleton-specific
+`README.md`, generated `RUBRIC.md`, and named testsets for public test blocks.
 
 # Example
 
@@ -57,7 +60,7 @@ function generate_skeleton_package(reference_path::AbstractString, skeleton_path
     policy = _metadata_ai_policy(ai_policy)
     isdir(reference) || throw(ArgumentError("reference_path is not a directory: $reference_path"))
     if validate
-        report = validate_reference_package(reference; io=io)
+        report = validate_reference_package(reference; io=io, run_tests=true)
         isvalid(report) || throw(ArgumentError("reference package validation failed; fix errors before generating"))
     end
     if ispath(skeleton)
@@ -68,20 +71,20 @@ function generate_skeleton_package(reference_path::AbstractString, skeleton_path
     rubric = _collect_rubric(reference)
     # Absolutize once so the skip-during-copy check and the actual read are consistent,
     # regardless of any working-directory change between the two points.
-    instructions_abs = instructions_path === nothing ? nothing : abspath(instructions_path)
+    instructions_abs = _default_instructions_path(reference, instructions_path)
     for (root, dirs, files) in walkdir(reference)
         filter!(d -> !(d in TEACHER_ONLY_DIRS), dirs)
         relroot = relpath(root, reference)
         outroot = relroot == "." ? skeleton : joinpath(skeleton, relroot)
         mkpath(outroot)
         for file in files
-            file in TEACHER_ONLY_FILES && continue
+            _is_teacher_only_file(file) && continue
             inpath = joinpath(root, file)
             instructions_abs !== nothing && abspath(inpath) == instructions_abs && continue
             outpath = joinpath(outroot, file)
             if any(ext -> endswith(file, ext), TRANSFORMED_EXTENSIONS)
                 text = read(inpath, String)
-                write(outpath, strip_reference_annotations(text; mode=mode))
+                write(outpath, strip_reference_annotations(text; mode=mode, testsets=endswith(file, ".jl")))
             else
                 cp(inpath, outpath; force=true)
             end
@@ -90,6 +93,7 @@ function generate_skeleton_package(reference_path::AbstractString, skeleton_path
     _write_student_instructions(skeleton; instructions_path=instructions_abs)
     _write_agents_file(skeleton; ai_policy=policy)
     _write_rubric(skeleton, rubric)
+    mode == :student && _write_student_readme(skeleton)
     return skeleton
 end
 

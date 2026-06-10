@@ -408,11 +408,18 @@ end
     @test !occursin("@test f(100) == 101", student)
     @test occursin("@marks 1 \"public check for f\"", student)
 
+    student_testsets = strip_reference_annotations(src; mode=:student, testsets=true)
+    @test occursin("@testset \"public check for f\" begin", student_testsets)
+    @test !occursin("@testset \"hidden check for larger input\" begin", student_testsets)
+
     teacher = strip_reference_annotations(src; mode=:teacher)
     @test occursin("return x + 1", teacher)
     @test !occursin("error(\"TODO\")", teacher)
     @test occursin("@test f(100) == 101", teacher)
     @test occursin("@marks 2 \"hidden check for larger input\"", teacher)
+    teacher_testsets = strip_reference_annotations(src; mode=:teacher, testsets=true)
+    @test occursin("@testset \"public check for f\" begin", teacher_testsets)
+    @test occursin("@testset \"hidden check for larger input\" begin", teacher_testsets)
 
     nested = """
 function h(xs)
@@ -462,9 +469,14 @@ end
     @test (@student_test begin 3 + 4 end) == 7
     @test (@hidden_test begin 5 + 6 end) == 11
     @test (@marks 1 "runtime no-op") === nothing
+    @test (@require exported(deliberately_missing)) === nothing
+    @test (@forbid imports(AlsoMissing)) === nothing
 end
 
 @testset "assignment requirements macros" begin
+    @test (@assignment_requirements begin
+        error("requirements are metadata and should not execute")
+    end) === nothing
     @assignment_requirements begin
         @require exported(generate_skeleton_package)
         @require exists(generate_skeleton_package)
@@ -485,6 +497,8 @@ end
     src = joinpath(tmp, "X")
     dst = joinpath(tmp, "Y")
     mkpath(joinpath(src, "src"))
+    mkpath(joinpath(src, "data"))
+    write(joinpath(src, "data", "tiny.txt"), "small fixture\n")
     write(joinpath(src, "Project.toml"), """
 name = "Demo"
 uuid = "7ab20f4c-9a1d-43a5-8e9d-54c7a5cb8eaa"
@@ -540,11 +554,14 @@ end
 Student-facing hint.
 end
 """)
-    generate_skeleton_package(src, dst; instructions_path=custom_notes, io=nothing)
+    write(joinpath(src, "student_notes.md~"), "teacher editor backup")
+    generate_skeleton_package(src, dst; io=nothing)
     @test isfile(joinpath(dst, "src", "Demo.jl"))
     @test isfile(joinpath(dst, "STUDENT_INSTRUCTIONS.md"))
     @test isfile(joinpath(dst, "RUBRIC.md"))
+    @test isfile(joinpath(dst, "README.md"))
     @test !isfile(joinpath(dst, "student_notes.md"))
+    @test !isfile(joinpath(dst, "student_notes.md~"))
     @test !isfile(joinpath(dst, "GRADING_PLAN.md"))
     @test !isfile(joinpath(dst, "TEACHER_CHECKLIST.md"))
     text = read(joinpath(dst, "src", "Demo.jl"), String)
@@ -555,10 +572,21 @@ end
     @test occursin("Pkg.instantiate()", instructions)
     @test occursin("Pkg.test()", instructions)
     @test occursin("src/", instructions)
+    @test occursin("data/", instructions)
+    @test occursin("Understanding Marks", instructions)
+    @test occursin("RUBRIC.md", instructions)
     @test occursin("Exercise-Specific Instructions", instructions)
     @test occursin("Implement `f`.", instructions)
     @test occursin("Student-facing hint.", instructions)
     @test !occursin("Teacher-only reminder.", instructions)
+    generated_tests = read(joinpath(dst, "test", "runtests.jl"), String)
+    @test occursin("@testset \"f handles a public input\" begin", generated_tests)
+    @test !occursin("f handles a larger hidden input", generated_tests)
+    student_readme = read(joinpath(dst, "README.md"), String)
+    @test occursin("Student Skeleton", student_readme)
+    @test occursin("STUDENT_INSTRUCTIONS.md", student_readme)
+    @test occursin("RUBRIC.md", student_readme)
+    @test occursin("AGENTS.md", student_readme)
     rubric = read(joinpath(dst, "RUBRIC.md"), String)
     @test occursin("Total: 3 marks", rubric)
     @test occursin("f handles a public input", rubric)
@@ -569,7 +597,12 @@ end
 
     plan_path = write_grading_plan(src)
     checklist_path = write_teacher_checklist(src)
-    @test occursin("Teacher Grading Plan", read(plan_path, String))
+    plan = read(plan_path, String)
+    @test occursin("Teacher Grading Plan", plan)
+    @test occursin("Assessment Summary", plan)
+    @test occursin("Design Notes", plan)
+    @test occursin("Maintain detailed", plan)
+    @test !occursin("- ID:", plan)
     @test occursin("Teacher Checklist", read(checklist_path, String))
 
     teacher_dst = joinpath(tmp, "Teacher")
@@ -580,6 +613,48 @@ end
 
     @test_throws ArgumentError generate_skeleton_package(src, teacher_dst; io=nothing)
     generate_skeleton_package(src, teacher_dst; force=true, io=nothing)
+end
+
+@testset "validation warns when reference behavioural tests fail" begin
+    tmp = mktempdir()
+    src = joinpath(tmp, "RequirementReference")
+    mkpath(joinpath(src, "src"))
+    mkpath(joinpath(src, "test"))
+    write(joinpath(src, "Project.toml"), """
+name = "RequirementReference"
+uuid = "7ab20f4c-9a1d-43a5-8e9d-54c7a5cb8ead"
+version = "0.1.0"
+""")
+    source_path = joinpath(src, "src", "RequirementReference.jl")
+    write(source_path, """
+module RequirementReference
+using SkeletonizePackage
+answer() = 1
+end
+""")
+    write(joinpath(src, "test", "runtests.jl"), """
+using RequirementReference
+using SkeletonizePackage
+using Test
+@student_test begin
+    @marks 1 "answer behaves correctly"
+    @test RequirementReference.answer() == 1
+end
+@hidden_test begin
+    @test RequirementReference.answer() isa Integer
+end
+@assignment_requirements begin
+    @require exported(answer) marks=1 "exports answer"
+    @require docstring(answer) marks=1 "documents answer"
+end
+""")
+
+    passing = sprint(show, validate_reference_package(src; run_tests=true))
+    @test !occursin("reference behavioural tests failed", passing)
+
+    write(source_path, replace(read(source_path, String), "answer() = 1" => "answer() = 0"))
+    failing = sprint(show, validate_reference_package(src; run_tests=true))
+    @test occursin("reference behavioural tests failed", failing)
 end
 
 @testset "validation" begin
@@ -611,6 +686,81 @@ end
     @test occursin("no @student_test", rendered)
 end
 
+@testset "validation catches skeleton design problems" begin
+    tmp = mktempdir()
+    src = joinpath(tmp, "WiringDemo")
+    mkpath(joinpath(src, "src"))
+    mkpath(joinpath(src, "test"))
+    write(joinpath(src, "Project.toml"), """
+name = "WiringDemo"
+uuid = "7ab20f4c-9a1d-43a5-8e9d-54c7a5cb8eab"
+version = "0.1.0"
+""")
+    write(joinpath(src, "src", "WiringDemo.jl"), """
+module WiringDemo
+using SkeletonizePackage
+include("included.jl")
+end
+""")
+    write(joinpath(src, "src", "included.jl"), """
+function included(xs)
+    @solution begin
+        total = 0
+        for x in xs
+            if iseven(x)
+                total += x
+            end
+        end
+        total
+    end
+    @scaffolding begin
+        error("TODO")
+    end
+end
+""")
+    write(joinpath(src, "src", "forgotten.jl"), """
+function forgotten()
+    @solution begin
+        42
+    end
+    @scaffolding begin
+        error("TODO")
+    end
+end
+""")
+    write(joinpath(src, "src", "requirements.jl"), """
+@assignment_requirements begin
+    @require exported(included)
+end
+""")
+    write(joinpath(src, "test", "runtests.jl"), """
+using WiringDemo
+using SkeletonizePackage
+using Test
+@student_test begin
+    @test true
+end
+""")
+
+    report = validate_reference_package(src)
+    rendered = sprint(show, report)
+    @test !isvalid(report)
+    @test occursin("@assignment_requirements appears in package source", rendered)
+    @test occursin("annotated source file is not reachable", rendered)
+    @test !occursin("included.jl:3: @solution has no nearby @scaffolding", rendered)
+
+    mismatched = joinpath(tmp, "Mismatched")
+    mkpath(joinpath(mismatched, "src"))
+    write(joinpath(mismatched, "Project.toml"), """
+name = "ExpectedName"
+uuid = "7ab20f4c-9a1d-43a5-8e9d-54c7a5cb8eac"
+version = "0.1.0"
+""")
+    write(joinpath(mismatched, "src", "OtherName.jl"), "module OtherName\nend\n")
+    mismatch_report = sprint(show, validate_reference_package(mismatched))
+    @test occursin("entry-point file does not match", mismatch_report)
+end
+
 @testset "assignment config and template" begin
     tmp = mktempdir()
     assignment = create_assignment(joinpath(tmp, "DemoAssignment"))
@@ -636,6 +786,8 @@ end
     @test isfile(joinpath(generated, "STUDENT_INSTRUCTIONS.md"))
     @test isfile(joinpath(generated, "AGENTS.md"))
     @test isfile(joinpath(generated, "RUBRIC.md"))
+    @test occursin("Student Skeleton", read(joinpath(generated, "README.md"), String))
+    @test !occursin("teacher reference package", lowercase(read(joinpath(generated, "README.md"), String)))
     @test !isfile(joinpath(generated, "GRADING_PLAN.md"))
     @test !isfile(joinpath(generated, "TEACHER_CHECKLIST.md"))
     text = read(joinpath(generated, "src", "DemoAssignment.jl"), String)

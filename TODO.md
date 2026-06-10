@@ -11,6 +11,9 @@
 - Consider project-wide property scopes, function-scoped property scopes, and
   block-scoped property scopes as separate concepts.
 
+- Consider checks that code runs in a given amount of time and given
+  amount of memory is used.
+
 ## GitHub Actions Integration
 
 - Publish a sample `.github/workflows/grade.yml` that runs `grade_submission` for

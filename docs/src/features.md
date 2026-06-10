@@ -30,15 +30,15 @@ The generated skeleton is still an ordinary Julia package. Students can open it
 in their editor, instantiate it, run `Pkg.test()`, and submit it using normal
 Julia workflows. The transformation handles Julia source, Markdown, TOML, and
 INC configuration files, while leaving teacher-only material such as `.git`,
-`build`, and `solutions` out of the student package.
+`build`, `solutions`, and common editor backup files out of the student package.
 
 ## Give Students Clear Instructions and a Rubric
 
 A generated skeleton can include much more than TODOs. `SkeletonizePackage.jl`
 writes a `STUDENT_INSTRUCTIONS.md` file with package-workflow guidance and any
-exercise-specific notes you provide. It also writes `RUBRIC.md` from the marks
-embedded in your tests and property checks, so students can see what matters
-without seeing hidden test code.
+exercise-specific notes you provide. A root `student_notes.md` is included
+automatically, and copied sections such as `data/` are listed. It also writes
+`RUBRIC.md` from the marks embedded in tests and property checks.
 
 AI-use expectations are documented too. The generated `AGENTS.md` records
 whether AI assistance is `forbidden`, `recorded`, or `allowed`, making that
@@ -49,8 +49,9 @@ course page.
 
 Public and hidden tests can carry marks with `@marks`, so the tests do not just
 pass or fail: they become named grading criteria. Stable `id="..."` values let
-the same criterion appear consistently in the student rubric, teacher grading
-plan, feedback reports, and CSV mark rows.
+the same criterion appear consistently in the student rubric, feedback reports,
+and CSV mark rows. Generated test blocks become named testsets using their first
+marks description; prefer one coherent marked criterion per block.
 
 For behavioural checks, `@reference_test` lets you compare a submitted function
 against the teacher implementation. You can provide explicit inputs or generate
@@ -68,7 +69,9 @@ operators, globals, and side-effect patterns.
 
 These checks can be gentle rubric items or hard gates. Add `marks=N` when a
 property should contribute points, or use `zero_marks=true` for serious shortcut
-or integrity violations that should zero the whole assignment.
+or integrity violations that should zero the whole assignment. Requirements are
+grading metadata, so the reference may deliberately omit a required student
+export or docstring.
 
 ## Validate Before You Distribute
 
@@ -76,16 +79,17 @@ Before generating a skeleton, `validate_reference_package(...)` can catch common
 assignment-design problems: unsupported annotation forms, missing test
 structure, parsing issues, and other situations that would confuse the
 transformation. Generation can be configured to stop when validation reports an
-error, so mistakes are caught before students receive the package.
+error, so mistakes are caught before students receive the package. Generation
+and CLI validation also run the reference behavioural tests and warn if a public
+or hidden test fails.
 
 ## Keep the Teacher Organised
 
 The package also writes teacher-facing material that stays out of the student
-skeleton. `GRADING_PLAN.md` records public and hidden criteria, stable IDs,
-source locations, points, and zero gates. `TEACHER_CHECKLIST.md` gives a compact
-preparation, skeleton-inspection, and grading checklist. Those files are useful
-when an assignment is reused, shared with tutors, or debugged after a semester
-has started.
+skeleton. `GRADING_PLAN.md` records the broad assessment design and points
+balance; detailed criteria remain beside tests in `@marks`, `@require`, and
+`@forbid` blocks and flow into the generated rubric. `TEACHER_CHECKLIST.md`
+gives a compact preparation, skeleton-inspection, and grading checklist.
 
 ## Grade Submissions at Class Scale
 

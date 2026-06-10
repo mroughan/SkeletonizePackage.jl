@@ -47,7 +47,7 @@ function main(args=ARGS)
     try
         if command == "validate"
             length(args) == 1 || return _usage(stderr, 1)
-            report = validate_reference_package(args[1]; io=stdout)
+            report = validate_reference_package(args[1]; io=stdout, run_tests=true)
             return isvalid(report) ? 0 : 2
         elseif command == "generate"
             return _main_generate(args)
