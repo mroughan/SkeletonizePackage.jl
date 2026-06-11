@@ -246,6 +246,7 @@ const _RE_ANNOTATION_BLOCK_OPENER = r"^\s*(for|while|if|function|let|try|quote)\
 
 _is_teacher_only_file(file::AbstractString) =
     file in TEACHER_ONLY_FILES || endswith(file, "~") ||
+    endswith(file, ".cov") || endswith(file, ".mem") ||
     (startswith(file, "#") && endswith(file, "#"))
 
 """
@@ -317,7 +318,9 @@ function strip_reference_annotations(text::AbstractString; mode::Symbol=:student
 end
 
 function _testset_block(opener::AbstractString, macro_name::AbstractString, block)
-    indent = first(opener, findfirst(!=(' '), opener) === nothing ? 0 : findfirst(!=(' '), opener) - 1)
+    first_nonspace = findfirst(!=(' '), opener)
+    indent_length = first_nonspace === nothing ? 0 : first_nonspace - 1
+    indent = first(opener, indent_length)
     default = macro_name == "@student_test" ? "Student tests" : "Hidden tests"
     label = default
     for line in block

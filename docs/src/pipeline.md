@@ -141,7 +141,8 @@ graded. Generated test blocks become named `@testset`s. Prefer one coherent
 `generate_skeleton_package` copies a Julia package, transforms `.jl`, `.md`,
 `.toml`, and `.inc` files, and skips teacher-only directories such as `.git`,
 `build`, and `solutions`. Common editor backup files ending in `~` or wrapped in
-`#...#` are also omitted.
+`#...#`, plus Julia coverage/allocation artifacts ending in `.cov` or `.mem`,
+are also omitted.
 
 For `mode = :student`, it removes `@solution` and `@hidden_test` bodies, and
 keeps `@scaffolding` and `@student_test` bodies. For `mode = :teacher`, it keeps

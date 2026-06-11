@@ -13,7 +13,7 @@ block generation; warnings and notes are printed to `io`.
 Existing contents of `skeleton_path` are preserved unless `force=true`. The
 generated path is returned. Directories named `.git`, `build`, and `solutions`
 are skipped, along with common editor backup files ending in `~` or wrapped in
-`#...#`.
+`#...#`, and Julia coverage/allocation artifacts ending in `.cov` or `.mem`.
 
 Pass `instructions_path` to append exercise-specific teacher instructions to the
 generated `STUDENT_INSTRUCTIONS.md`. If it is omitted and `student_notes.md`

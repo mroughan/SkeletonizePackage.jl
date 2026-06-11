@@ -125,7 +125,7 @@ No issues found.
 ```
 """
 function validate_reference_package(reference_path::AbstractString; io::Union{Nothing, IO}=nothing, run_tests::Bool=false)
-    root = abspath(reference_path)
+    root = abspath(String(reference_path))
     isdir(root) || throw(ArgumentError("reference_path is not a directory: $reference_path"))
     issues = ValidationIssue[]
     _validate_package_shape!(issues, root)
@@ -165,7 +165,7 @@ function validate_reference_package(reference_path::AbstractString; io::Union{No
     return report
 end
 
-function _validate_reference_tests!(issues, root)
+function _validate_reference_tests!(issues, root::String)
     test_path = joinpath(root, "test", "runtests.jl")
     isfile(test_path) || return
     project_name = _project_name(root)
@@ -213,7 +213,7 @@ end
 Check that `root` contains the minimum files expected of a Julia package
 (`Project.toml`, `src/`, `test/`). Pushes `ValidationIssue`s into `issues`.
 """
-function _validate_package_shape!(issues, root)
+function _validate_package_shape!(issues, root::String)
     isfile(joinpath(root, "Project.toml")) ||
         _push_issue!(issues, :error, "Project.toml", nothing, "missing Project.toml", "Create a normal Julia package before generating a skeleton package.")
     isdir(joinpath(root, "src")) ||
@@ -222,7 +222,7 @@ function _validate_package_shape!(issues, root)
         _push_issue!(issues, :warning, "test", nothing, "missing test directory", "Add tests, including @student_test and optional @hidden_test blocks.")
 end
 
-function _validate_source_wiring!(issues, root)
+function _validate_source_wiring!(issues, root::String)
     project_path = joinpath(root, "Project.toml")
     isfile(project_path) || return
     project = try
@@ -269,7 +269,9 @@ function _reachable_source_files(main_path)
         push!(reachable, path)
         text = read(path, String)
         for m in eachmatch(r"\binclude\(\s*\"([^\"]+\.jl)\"\s*\)", text)
-            push!(pending, normpath(joinpath(dirname(path), m.captures[1])))
+            included = m.captures[1]
+            included === nothing && continue
+            push!(pending, normpath(joinpath(dirname(path), included)))
         end
     end
     return reachable

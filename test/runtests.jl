@@ -555,6 +555,7 @@ Student-facing hint.
 end
 """)
     write(joinpath(src, "student_notes.md~"), "teacher editor backup")
+    write(joinpath(src, "src", "Demo.jl.1234.cov"), "coverage artifact with @solution begin")
     generate_skeleton_package(src, dst; io=nothing)
     @test isfile(joinpath(dst, "src", "Demo.jl"))
     @test isfile(joinpath(dst, "STUDENT_INSTRUCTIONS.md"))
@@ -562,6 +563,7 @@ end
     @test isfile(joinpath(dst, "README.md"))
     @test !isfile(joinpath(dst, "student_notes.md"))
     @test !isfile(joinpath(dst, "student_notes.md~"))
+    @test !isfile(joinpath(dst, "src", "Demo.jl.1234.cov"))
     @test !isfile(joinpath(dst, "GRADING_PLAN.md"))
     @test !isfile(joinpath(dst, "TEACHER_CHECKLIST.md"))
     text = read(joinpath(dst, "src", "Demo.jl"), String)
