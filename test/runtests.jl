@@ -492,6 +492,8 @@ end
     end
 end
 
+include("docstring_examples.jl")
+
 @testset "generate_skeleton_package" begin
     tmp = mktempdir()
     src = joinpath(tmp, "X")

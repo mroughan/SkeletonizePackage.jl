@@ -140,5 +140,7 @@ function _metadata_ai_policy(value)
 end
 
 function _config_path(base::AbstractString, path::AbstractString)
-    return isabspath(path) ? String(path) : normpath(joinpath(base, path))
+    normalized = isabspath(path) ? normpath(String(path)) : normpath(joinpath(base, path))
+    stripped = rstrip(normalized, ['/', '\\'])
+    return isempty(stripped) || occursin(r"^[A-Za-z]:$", stripped) ? normalized : stripped
 end

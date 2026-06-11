@@ -7,6 +7,20 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+### Added (docstring test coverage)
+
+- Package tests now mirror the public API docstring examples in
+  `test/docstring_examples.jl`, reducing the chance that examples and regular
+  tests drift apart.
+- The documentation workflow now runs `Documenter.doctest` explicitly before the
+  docs build.
+
+### Fixed (docstring test coverage)
+
+- `read_assignment_config` now strips trailing path separators from normalized
+  config paths so examples using `basename(config.reference_path)` behave as
+  documented when `reference_path = "."`.
+
 ### Fixed (reliability refinements — session 3)
 
 - `_criterion_results`: reference-test criterion items now match by function name as well

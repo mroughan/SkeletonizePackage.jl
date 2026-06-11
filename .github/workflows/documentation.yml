@@ -30,6 +30,13 @@ jobs:
           using Pkg
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
+      - name: Run doctests
+        shell: julia --color=yes --project=docs {0}
+        run: |
+          using Documenter
+          using SkeletonizePackage
+          DocMeta.setdocmeta!(SkeletonizePackage, :DocTestSetup, :(using SkeletonizePackage); recursive=true)
+          doctest(SkeletonizePackage)
       - name: Build and deploy
         run: julia --color=yes --project=docs docs/make.jl
         env:
