@@ -53,8 +53,11 @@ SortingAssignmentSkeleton/
 ```
 
 The student's submitted package is graded against the original reference
-package. The grading command writes two different outputs: a Markdown feedback
-report for the student, and a CSV row for the teacher's marks table.
+package. By default, automarking runs the teacher's original `test/runtests.jl`
+against the submitted package, so modified or corrupted tests in the submitted
+copy do not affect the grade. The grading command writes two different outputs:
+a Markdown feedback report for the student, and a CSV row for the teacher's
+marks table.
 
 Teacher scaffolds also include `GRADING_PLAN.md` and `TEACHER_CHECKLIST.md`.
 These files stay with the teacher reference package and are not copied into the
@@ -74,6 +77,7 @@ force = false
 validate = true
 instructions_path = "student_notes.md"
 ai_policy = "recorded"
+copy_paths = "Project.toml, SkeletonizePackage.inc, src, test, data"
 ---
 config
 assignment
@@ -90,6 +94,11 @@ belong under `[assignment]`. `instructions_path` and `ai_policy` may also be
 placed under `[student]`. Relative paths are resolved from the config file's
 directory. If `instructions_path` is omitted and the reference package contains
 `student_notes.md`, it is included automatically.
+
+`copy_paths` lists the files and directories that are copied into the skeleton.
+When omitted, the default is `Project.toml`, `SkeletonizePackage.inc`, `src`,
+`test`, and `data`. Add extra files or directories explicitly only when they
+should be distributed to students.
 
 `ai_policy` controls the generated `AGENTS.md` file:
 
@@ -138,11 +147,11 @@ graded. Generated test blocks become named `@testset`s. Prefer one coherent
 
 ## Skeleton Generation
 
-`generate_skeleton_package` copies a Julia package, transforms `.jl`, `.md`,
-`.toml`, and `.inc` files, and skips teacher-only directories such as `.git`,
-`build`, and `solutions`. Common editor backup files ending in `~` or wrapped in
-`#...#`, plus Julia coverage/allocation artifacts ending in `.cov` or `.mem`,
-are also omitted.
+`generate_skeleton_package` copies configured paths from a Julia package,
+transforms copied `.jl`, `.md`, `.toml`, and `.inc` files, and skips teacher-only
+directories such as `.git`, `build`, and `solutions`. Common editor backup files
+ending in `~` or wrapped in `#...#`, plus Julia coverage/allocation artifacts
+ending in `.cov` or `.mem`, are also omitted.
 
 For `mode = :student`, it removes `@solution` and `@hidden_test` bodies, and
 keeps `@scaffolding` and `@student_test` bodies. For `mode = :teacher`, it keeps
@@ -187,10 +196,10 @@ Generation and the `validate` command also run the reference behavioural tests
 and warn when they fail. For direct API calls, request this explicitly with
 `validate_reference_package(path; run_tests=true)`.
 
-`grade_submission` runs a submission package's tests in an isolated Julia
-process and returns a `GradeResult`. The result contains `student_report` for
-student feedback, plus `csv_header` and `csv_row` for a marks table with one row
-per student.
+`grade_submission` runs the reference package's tests against a submitted
+package in an isolated Julia process and returns a `GradeResult`. The result
+contains `student_report` for student feedback, plus `csv_header` and `csv_row`
+for a marks table with one row per student.
 
 ```julia
 result = grade_submission(

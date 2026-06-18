@@ -68,6 +68,11 @@ record that makes the teacher's AI-use rule unambiguous.
 `STUDENT_INSTRUCTIONS.md`. If omitted, a root `student_notes.md` is used
 automatically when present.
 
+`copy_paths` selects the files and directories copied into the generated
+skeleton. If omitted, generation copies `Project.toml`, `SkeletonizePackage.inc`,
+`src`, `test`, and `data` when present. Extra files such as private notes are
+not copied unless they are listed explicitly.
+
 ## Rubric Generation
 
 Use `@marks POINTS "description"` inside `@student_test` or `@hidden_test`

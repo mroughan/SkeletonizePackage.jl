@@ -127,6 +127,7 @@ restrictions on allowed Julia features or packages, and what they should submit.
                 "validate" => "true",
                 "instructions_path" => "student_notes.md",
                 "ai_policy" => String(policy),
+                "copy_paths" => join(DEFAULT_COPY_PATHS, ", "),
             ),
         ),
     )
@@ -218,6 +219,12 @@ Pkg.test()
 ```
 
 Tests are your fastest feedback loop. Run them after each small change.
+
+The supplied tests are there to help you check your work. Changing them will not
+make an incorrect solution correct: grading uses the teacher's original tests
+and rubric, not any modified tests in your submitted copy. It is fine to add your
+own extra tests while you work, especially for edge cases, but keep the original
+tests as a useful baseline.
 
 ## Understanding Marks
 

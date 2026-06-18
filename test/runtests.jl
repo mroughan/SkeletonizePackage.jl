@@ -76,15 +76,15 @@ end
 """)
 
     write(joinpath(submission, "Project.toml"), """
-name = "$submission_name"
+name = "Reference"
 uuid = "943caa71-d73c-45f3-9d74-cad2c873d074"
 version = "0.1.0"
 
 [deps]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 """)
-    write(joinpath(submission, "src", "$submission_name.jl"), """
-module $submission_name
+    write(joinpath(submission, "src", "Reference.jl"), """
+module Reference
 export answer
 $(forbidden_import ? "module DataFrames end\nusing .DataFrames" : "# no forbidden imports")
 answer() = $(passing ? 42 : 0)
@@ -777,6 +777,8 @@ end
     @test metadata(config_file)["assignment"]["reference_path"] == "."
     @test metadata(config_file)["assignment"]["validate"] == "true"
     @test metadata(config_file)["assignment"]["ai_policy"] == "recorded"
+    @test metadata(config_file)["assignment"]["copy_paths"] == "Project.toml, SkeletonizePackage.inc, src, test, data"
+    write(joinpath(assignment, "comments.txt"), "private teacher notes\n")
 
     report = validate_reference_package(assignment)
     @test isvalid(report)
@@ -785,6 +787,7 @@ end
     @test config.mode == :student
     @test config.instructions_path == joinpath(assignment, "student_notes.md")
     @test config.ai_policy == :recorded
+    @test config.copy_paths == SkeletonizePackage.DEFAULT_COPY_PATHS
     generated = generate_skeleton_package(config; io=nothing)
     @test isfile(joinpath(generated, "src", "DemoAssignment.jl"))
     @test isfile(joinpath(generated, "STUDENT_INSTRUCTIONS.md"))
@@ -792,6 +795,7 @@ end
     @test isfile(joinpath(generated, "RUBRIC.md"))
     @test occursin("Student Skeleton", read(joinpath(generated, "README.md"), String))
     @test !occursin("teacher reference package", lowercase(read(joinpath(generated, "README.md"), String)))
+    @test !isfile(joinpath(generated, "comments.txt"))
     @test !isfile(joinpath(generated, "GRADING_PLAN.md"))
     @test !isfile(joinpath(generated, "TEACHER_CHECKLIST.md"))
     text = read(joinpath(generated, "src", "DemoAssignment.jl"), String)
@@ -807,6 +811,21 @@ end
     @test occursin("answer returns the required value", rubric)
     @test occursin("exports the required function", rubric)
     @test occursin("public-answer-integer", rubric)
+
+    configured_extra = generate_skeleton_package(
+        SkeletonizePackage.AssignmentConfig(
+            config.reference_path,
+            joinpath(tmp, "DemoAssignmentWithComments"),
+            config.mode,
+            true,
+            config.validate,
+            config.instructions_path,
+            config.ai_policy,
+            [SkeletonizePackage.DEFAULT_COPY_PATHS; "comments.txt"],
+        );
+        io=nothing,
+    )
+    @test read(joinpath(configured_extra, "comments.txt"), String) == "private teacher notes\n"
 
     forbidden_assignment = create_assignment(joinpath(tmp, "ForbiddenAssignment"); ai_policy=:forbidden)
     forbidden_config = SkeletonizePackage.read_assignment_config(joinpath(forbidden_assignment, "SkeletonizePackage.inc"))
@@ -933,6 +952,9 @@ end
     instructions = read(joinpath(generated, "STUDENT_INSTRUCTIONS.md"), String)
     @test occursin("Getting Started", instructions)
     @test occursin("Pkg.instantiate()", instructions)
+    @test occursin("Changing them will not", instructions)
+    @test occursin("make an incorrect solution correct", instructions)
+    @test occursin("teacher's original tests", instructions)
 end
 
 @testset "grade result" begin
@@ -973,7 +995,23 @@ end
     @test read(report_path, String) == passing.student_report
     @test split(chomp(read(csv_path, String)), '\n') == [passing.csv_header, passing.csv_row]
 
+    write(joinpath(passing_submission, "test", "runtests.jl"), """
+using Reference
+using Test
+
+@test true
+""")
+    corrupted_local_tests = grade_submission(reference, passing_submission; student_id="student-corrupted-tests")
+    @test isvalid(corrupted_local_tests)
+    @test occursin("answer returns forty-two: 2 / 2 marks", corrupted_local_tests.student_report)
+
     _, failing_submission = _write_grade_fixture!(tmp; submission_name="FailingSubmission", passing=false)
+    write(joinpath(failing_submission, "test", "runtests.jl"), """
+using Reference
+using Test
+
+@test true
+""")
     failing = grade_submission(
         reference,
         failing_submission;

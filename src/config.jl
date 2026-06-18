@@ -8,9 +8,10 @@ Use [`read_assignment_config`](@ref) or pass a `SkeletonizePackage.inc` file to
 [`generate_skeleton_package`](@ref) to construct this from INC metadata.
 `instructions_path` is optional and points to Markdown that should be appended
 to the generated student instructions. When it is `nothing`, generation uses a
-root `student_notes.md` automatically when available. `ai_policy` controls the
-generated `AGENTS.md` file and must be one of `:forbidden`, `:recorded`, or
-`:allowed`.
+root `student_notes.md` automatically when available. `copy_paths` lists the
+reference-package files or directories copied into the skeleton. If omitted,
+the standard package paths are copied. `ai_policy` controls the generated
+`AGENTS.md` file and must be one of `:forbidden`, `:recorded`, or `:allowed`.
 
 # Example
 
@@ -32,10 +33,18 @@ struct AssignmentConfig
     validate::Bool
     instructions_path::Union{Nothing, String}
     ai_policy::Symbol
+    copy_paths::Vector{String}
 end
 
 const _AI_POLICIES = (:forbidden, :recorded, :allowed)
 const _AI_POLICY_ERROR = "ai_policy must be forbidden, recorded, or allowed"
+const DEFAULT_COPY_PATHS = ["Project.toml", "SkeletonizePackage.inc", "src", "test", "data"]
+
+AssignmentConfig(reference_path::AbstractString, skeleton_path::AbstractString, mode::Symbol, force::Bool, validate::Bool, instructions_path::Union{Nothing, AbstractString}, ai_policy::Symbol) =
+    AssignmentConfig(String(reference_path), String(skeleton_path), mode, force, validate, instructions_path === nothing ? nothing : String(instructions_path), ai_policy, copy(DEFAULT_COPY_PATHS))
+
+AssignmentConfig(reference_path::AbstractString, skeleton_path::AbstractString, mode::Symbol, force::Bool, validate::Bool, instructions_path::Union{Nothing, AbstractString}, ai_policy::Symbol, copy_paths::AbstractVector) =
+    AssignmentConfig(String(reference_path), String(skeleton_path), mode, force, validate, instructions_path === nothing ? nothing : String(instructions_path), ai_policy, String.(copy_paths))
 
 """
     read_assignment_config(path="SkeletonizePackage.inc")
@@ -54,6 +63,7 @@ force = false
 validate = true
 instructions_path = "student_notes.md"
 ai_policy = "recorded"
+copy_paths = "Project.toml, SkeletonizePackage.inc, src, test, data"
 ---
 config
 assignment
@@ -113,7 +123,8 @@ function read_assignment_config(path::AbstractString="SkeletonizePackage.inc")
     instructions = get(assignment, "instructions_path", get(student_section, "instructions_path", nothing))
     instructions_path = instructions === nothing ? nothing : _config_path(base, String(instructions))
     ai_policy = _metadata_ai_policy(get(assignment, "ai_policy", get(student_section, "ai_policy", "recorded")))
-    return AssignmentConfig(_config_path(base, String(reference)), _config_path(base, String(skeleton)), mode, force, validate, instructions_path, ai_policy)
+    copy_paths = _metadata_copy_paths(get(assignment, "copy_paths", get(student_section, "copy_paths", DEFAULT_COPY_PATHS)))
+    return AssignmentConfig(_config_path(base, String(reference)), _config_path(base, String(skeleton)), mode, force, validate, instructions_path, ai_policy, copy_paths)
 end
 
 function _metadata_section(data::AbstractDict, name::AbstractString)
@@ -137,6 +148,27 @@ function _metadata_ai_policy(value)
     policy = Symbol(lowercase(strip(value)))
     policy in _AI_POLICIES || throw(ArgumentError(_AI_POLICY_ERROR))
     return policy
+end
+
+function _metadata_copy_paths(value)
+    paths = if value isa AbstractVector
+        String.(value)
+    elseif value isa AbstractString
+        split(String(value), r"[\n,]")
+    else
+        throw(ArgumentError("copy_paths must be a comma-separated string or a list of paths"))
+    end
+    normalized = String[]
+    for path in paths
+        rel = replace(strip(path), '\\' => '/')
+        isempty(rel) && continue
+        isabspath(rel) && throw(ArgumentError("copy_paths must contain relative paths, got $rel"))
+        norm = normpath(rel)
+        (norm == "." || startswith(norm, "..")) &&
+            throw(ArgumentError("copy_paths must stay inside the reference package, got $rel"))
+        push!(normalized, norm)
+    end
+    return isempty(normalized) ? copy(DEFAULT_COPY_PATHS) : normalized
 end
 
 function _config_path(base::AbstractString, path::AbstractString)

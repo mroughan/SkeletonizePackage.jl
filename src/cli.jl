@@ -75,7 +75,7 @@ function _main_generate(args)
         deleteat!(args, config_index:config_index + 1)
         isempty(args) || throw(ArgumentError("unexpected arguments: $(join(args, " "))"))
         config = read_assignment_config(config_path)
-        config = AssignmentConfig(config.reference_path, config.skeleton_path, config.mode, force || config.force, validate && config.validate, config.instructions_path, something(ai_policy, config.ai_policy))
+        config = AssignmentConfig(config.reference_path, config.skeleton_path, config.mode, force || config.force, validate && config.validate, config.instructions_path, something(ai_policy, config.ai_policy), config.copy_paths)
         println(generate_skeleton_package(config; io=stderr))
         return 0
     end

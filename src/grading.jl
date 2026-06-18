@@ -132,12 +132,13 @@ end
 
 Run the grading harness for a student submission package.
 
-The harness runs the submission's tests in an isolated Julia process, then evaluates
-any `@reference_test` entries and `@require`/`@forbid` property checks.
+The harness runs the reference package's tests against the submitted package in
+an isolated Julia process, then evaluates any `@reference_test` entries and
+`@require`/`@forbid` property checks.
 
 # Keywords
 
-- `test_path` — alternate test file (default: `submission/test/runtests.jl`).
+- `test_path` — alternate test file (default: `reference/test/runtests.jl`).
 - `student_id` — identifier used in reports and CSV rows (default: `basename(submission_path)`).
 - `report_path` — write Markdown report to this file when set.
 - `html_path` — write HTML report to this file when set.
@@ -193,7 +194,7 @@ function grade_submission(
     isdir(submission_path) || throw(ArgumentError("submission_path is not a directory"))
     csv_format in (:default, :canvas, :moodle, :blackboard) ||
         throw(ArgumentError("unknown csv_format :$csv_format — choose :default, :canvas, :moodle, or :blackboard"))
-    selected_test_path = test_path === nothing ? joinpath(submission_path, "test", "runtests.jl") : test_path
+    selected_test_path = test_path === nothing ? joinpath(reference_path, "test", "runtests.jl") : test_path
     isfile(selected_test_path) || throw(ArgumentError("test_path is not a file: $selected_test_path"))
 
     rubric, reference_specs = _collect_rubric_and_specs(reference_path)

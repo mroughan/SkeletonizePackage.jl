@@ -194,7 +194,9 @@ generate_skeleton_package(config; io=stdout)
 student mode before being appended to `STUDENT_INSTRUCTIONS.md`. When omitted,
 `student_notes.md` in the reference root is included automatically. `ai_policy`
 can be `forbidden`, `recorded`, or `allowed`; it controls the generated
-`AGENTS.md` file in the student skeleton.
+`AGENTS.md` file in the student skeleton. `copy_paths` controls the files and
+directories copied into the skeleton; by default it includes `Project.toml`,
+`SkeletonizePackage.inc`, `src`, `test`, and `data`.
 
 The generated configured skeleton contains:
 

@@ -244,6 +244,7 @@ reference_path = "."
 skeleton_path = "../MyAssignmentStudent"
 instructions_path = "student_notes.md"
 ai_policy = "recorded"
+copy_paths = "Project.toml, SkeletonizePackage.inc, src, test, data"
 ---
 config
 assignment
@@ -256,6 +257,15 @@ included automatically. Annotation blocks in the Markdown file are transformed
 in student mode, so `@scaffolding` content is kept and `@solution` content is
 removed.
 
+Generation copies only configured student-facing paths. If `copy_paths` is
+omitted, the default is `Project.toml`, `SkeletonizePackage.inc`, `src`, `test`,
+and `data`. Add extra files or directories only when they should be distributed
+to students, for example:
+
+```text
+copy_paths = "Project.toml, SkeletonizePackage.inc, src, test, data, assets"
+```
+
 `ai_policy` controls the generated `AGENTS.md` file. It can be:
 
 - `forbidden`: AI agents and AI coding assistants are strictly forbidden.
@@ -267,7 +277,9 @@ removed.
 ## Grading outputs
 
 `grade_submission(reference_path, submission_path)` grades a student submission
-against the reference package rubric. The returned `GradeResult` includes:
+against the reference package rubric. By default it runs the teacher's original
+`test/runtests.jl` against the submitted package, so changed tests in a student
+submission do not affect automarking. The returned `GradeResult` includes:
 
 - `student_report`: Markdown feedback for the student.
 - `html_report`: The same feedback as a self-contained HTML document.
