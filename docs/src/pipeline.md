@@ -24,19 +24,20 @@ feedback/report
 
 ## Worked Pipeline
 
-The checked-in examples can be used to exercise the whole flow. Teachers can
-begin from a scaffolded reference package:
-
-```bash
-julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init MyAssignment --ai-policy recorded
-```
-
-Then generate a student skeleton and grade a submitted package:
+The checked-in `examples/SortingAssignment` reference package can be used to
+exercise the whole flow. Validate the reference package, generate a student
+skeleton, and grade a submitted package:
 
 ```bash
 julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate examples/SortingAssignment
 julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
 julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
+```
+
+To begin a fresh assignment instead, scaffold a teacher reference package with:
+
+```bash
+julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init MyAssignment --ai-policy recorded
 ```
 
 The generated skeleton is the package distributed to students:
@@ -98,7 +99,9 @@ directory. If `instructions_path` is omitted and the reference package contains
 `copy_paths` lists the files and directories that are copied into the skeleton.
 When omitted, the default is `Project.toml`, `SkeletonizePackage.inc`, `src`,
 `test`, and `data`. Add extra files or directories explicitly only when they
-should be distributed to students.
+should be distributed to students. Validation warns about root files or
+directories that are not listed, because they will be absent from the student
+skeleton.
 
 `ai_policy` controls the generated `AGENTS.md` file:
 
@@ -216,6 +219,20 @@ result.csv_row
 
 The grading harness summarizes marks by rubric visibility, such as `public` and
 `hidden`, and totals them at the end of the CSV row. Property and reference-test
-criteria are evaluated separately. Ordinary behavioural `@marks` criteria are
-currently inferred from the overall submission test result, so teachers should
-prefer one coherent marked behaviour per test block.
+criteria are evaluated separately. Ordinary behavioral `@marks` points still
+require an overall passing behavioral run, but each group's actual outcome is
+reported separately. Failed assertions no longer prevent later tests from
+running. Keep independent behaviors in separate annotated blocks so an exception
+in one group's setup does not prevent the others from running.
+
+Set `zero_on_failure=true` (CLI: `--zero-on-failure`) to zero the entire assignment
+after a behavioral failure, including property points. Passing outcomes remain
+visible even when the scoring policy withholds their marks.
+
+`result.test_results` contains counts and statuses for the whole run and each
+group. Setup/import failures, timeouts, and process exits can leave tests unrun;
+completed results are retained. `failure_category` and the brief stderr diagnostic
+distinguish assertion failures from dependency, loading, and execution problems.
+Use `io=nothing` to silence the diagnostic. Review the full Test Output before
+attributing an environment or precompilation failure to student code. The grader
+does not install dependencies automatically.

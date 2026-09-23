@@ -195,6 +195,46 @@ without exposing the reference implementation in the skeleton.
 
 ## Reports
 
+### Execution And Scoring
+
+Behavioral test execution and scoring are separate. A child runner uses Julia's
+`Test.AbstractTestSet` interface to record assertions without throwing on the
+first failure. Julia's parsed expressions wrap `@student_test` and `@hidden_test`
+blocks in recorded testsets; ordinary nested testsets inherit the recorder.
+Rubric source locations connect executed `@marks` statements to their test
+groups, including groups in included files and groups with duplicate names.
+This does not require an assignment package to load the examiner's version of
+SkeletonizePackage to provide the recorder.
+
+All independent groups are attempted after assertion failures or exceptions
+inside a group. An exception outside an assertion stops the remainder of that
+group. A setup/import failure, explicit exit, or timeout may prevent later groups
+from running. Atomic TOML snapshots preserve observed outcomes before such
+interruptions; unfinished groups and unreached criteria are not called failures
+of assertions that never ran. Explicit foreign testset types are unsupported and
+reported as an error rather than silently discarded.
+
+The existing scoring default remains conservative: all ordinary behavioral
+marks require an overall passing behavioral run. Property points are independent.
+`zero_on_failure=true` additionally withholds property points after a behavioral
+failure. Fatal property gates still zero the assignment. Neither scoring policy
+changes the recorded pass/fail outcomes, including `CriterionResult.passed`.
+Per-group outcomes do not imply automatic partial-credit scoring.
+
+The child uses the submission project plus the examiner's active project as
+fallback test tooling, with startup files disabled. No automatic dependency
+installation or submission edits occur. Brief diagnostics distinguish failed
+assertions, dependency/loading problems, test exceptions, reference-oracle
+problems, and interrupted execution. Reports retain the underlying exception
+and source location. These categories describe evidence, not certain attribution
+of fault to a student. Missing dependencies require examiner review before marks
+are finalized.
+
+The implementation follows Julia's documented custom testset interface; see
+`references/grading/README.md` and its archived upstream documentation.
+
+### Output Formats
+
 Grading produces two complementary outputs:
 
 - a student feedback report, usually Markdown, explaining which criteria were

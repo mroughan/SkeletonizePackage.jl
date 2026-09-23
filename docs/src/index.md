@@ -11,7 +11,7 @@ early.
 
 ## Quick Start
 
-Start by scaffolding a teacher reference package:
+To start a fresh assignment, scaffold a teacher reference package:
 
 ```julia
 using SkeletonizePackage
@@ -38,13 +38,12 @@ function mysort(xs)
 end
 ```
 
-Validate it, generate a skeleton, let the student work from that skeleton, and
-grade the resulting submission:
+To try the complete pipeline immediately, use the checked-in
+`examples/SortingAssignment` reference package. Validate it, generate a skeleton,
+let the student work from that skeleton, and grade the resulting submission:
 
 ```julia
 using SkeletonizePackage
-
-create_assignment("MyAssignment"; ai_policy=:recorded)
 
 report = validate_reference_package(
     "examples/SortingAssignment";

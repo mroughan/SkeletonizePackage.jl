@@ -435,6 +435,9 @@ function write_grading_plan(reference_path::AbstractString; plan_path::AbstractS
     println(io, "This file records the broad assessment design. Maintain detailed")
     println(io, "criteria beside tests using `@marks`, `@require`, and `@forbid`;")
     println(io, "those annotations generate `RUBRIC.md` and drive grading.")
+    println(io, "Grading reports test outcomes independently of marks and continues after failed assertions.")
+    println(io, "Use `zero_on_failure=true` to zero the entire assignment after a behavioral failure while retaining those outcomes.")
+    println(io, "Review dependency/loading diagnostics before finalizing marks; an environment failure is not proof of an incorrect answer.")
     println(io)
     println(io, "## Assessment Summary")
     println(io)
@@ -492,6 +495,9 @@ Use this checklist before distributing the generated student skeleton.
 - [ ] Keep the original reference package unchanged for grading.
 - [ ] Run grading on one known-good submission and one known-bad submission.
 - [ ] Inspect the student feedback report.
+- [ ] Review passed, failed, errored, and unrun test groups independently of marks.
+- [ ] Resolve missing dependencies and other execution problems before finalizing marks.
+- [ ] Decide whether to use `zero_on_failure=true` for whole-assignment zero scoring.
 - [ ] Inspect the CSV row and confirm category totals.
 - [ ] Keep `GRADING_PLAN.md` with the teacher materials.
 

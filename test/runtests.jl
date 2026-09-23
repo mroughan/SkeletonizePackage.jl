@@ -782,6 +782,10 @@ end
 
     report = validate_reference_package(assignment)
     @test isvalid(report)
+    rendered_report = sprint(show, report)
+    @test occursin("comments.txt", rendered_report)
+    @test occursin("will be absent from the student skeleton", rendered_report)
+    @test !occursin("README.md: file is not listed in copy_paths", rendered_report)
 
     config = SkeletonizePackage.read_assignment_config(config_path)
     @test config.mode == :student
@@ -826,6 +830,8 @@ end
         io=nothing,
     )
     @test read(joinpath(configured_extra, "comments.txt"), String) == "private teacher notes\n"
+    extra_report = validate_reference_package(assignment; copy_paths=[SkeletonizePackage.DEFAULT_COPY_PATHS; "comments.txt"])
+    @test !occursin("comments.txt", sprint(show, extra_report))
 
     forbidden_assignment = create_assignment(joinpath(tmp, "ForbiddenAssignment"); ai_policy=:forbidden)
     forbidden_config = SkeletonizePackage.read_assignment_config(joinpath(forbidden_assignment, "SkeletonizePackage.inc"))
@@ -1178,6 +1184,8 @@ assignment
 """)
     @test_throws ArgumentError SkeletonizePackage.read_assignment_config(config_path)
 end
+
+include("grading_diagnostics.jl")
 
 if get(ENV, "SKELETONIZE_RUN_QUALITY_TESTS", "false") == "true"
     include("aqua.jl")

@@ -7,6 +7,21 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+### Added (grading diagnostics)
+
+- Behavioral test groups now continue after failed assertions, with counts and
+  failure details in `GradeResult.test_results` and Markdown/HTML reports.
+- Actual criterion outcomes remain visible when overall scoring withholds marks.
+  `zero_on_failure=true` and CLI `--zero-on-failure` can zero the entire assignment.
+- Brief examiner diagnostics distinguish missing dependencies, loading errors,
+  assertion failures, test exceptions, reference failures, and interrupted runs.
+  Set `io=nothing` to silence them. Dependencies are not installed automatically.
+- Atomic result snapshots preserve completed tests on process exit or timeout;
+  unreached criteria are reported as not run. Startup files are disabled and the
+  examiner project supplies fallback test tooling.
+- Regression coverage for continuation, nested/included groups, duplicate names,
+  zero scoring, missing dependencies, interrupted execution, and report exports.
+
 ### Added (docstring test coverage)
 
 - Package tests now mirror the public API docstring examples in

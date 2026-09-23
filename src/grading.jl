@@ -41,6 +41,8 @@ Per-criterion grading outcome for one rubric item.
 
 `id` is the stable rubric identifier supplied by the teacher or generated from
 the criterion. `awarded` is the number of marks awarded for this criterion.
+`passed` describes the observed outcome independently of scoring: it can be
+`true` while `awarded == 0` when an overall zero-mark policy applies.
 """
 struct CriterionResult
     id::String
@@ -65,9 +67,16 @@ Fields:
 - `csv_header`, `csv_row` — one-row CSV mark summary (`:default` format).
 - `gradescope_json` — Gradescope autograder JSON (always populated; write via `gradescope_path`).
 - `rubric_items`, `criterion_results`, `property_results`, `reference_test_results` — structured results.
+- `test_results` — named tuples for the root test run and its groups, with `name`,
+  `status`, assertion counts (`passed`, `failed`, `errored`, `broken`), failure
+  `details`, and executed rubric source locations (`marks`). Root counts include
+  all descendants; do not sum them again with group counts. Status is `:passed`,
+  `:failed`, `:error`, `:not_run` (no evaluated assertions), or `:incomplete`.
 - `awarded_by_category`, `possible_by_category`, `total_awarded`, `total_possible` — mark totals.
 - `timed_out` — true when the submission test process exceeded `test_timeout_seconds`.
-- `failure_category` — `:none`, `:load_failure`, `:test_failure`, `:timeout`, or `:zero_gate`.
+- `failure_category` — `:none`, `:environment_failure`, `:load_failure`,
+  `:test_failure`, `:test_error`, `:execution_failure`, `:reference_failure`,
+  `:property_failure`, `:timeout`, or `:zero_gate`.
 - `failure_message` — human-readable explanation of the failure category.
 
 # Example
@@ -83,6 +92,9 @@ julia> result.csv_header
 
 julia> result.csv_row
 ",passed,0"
+
+julia> isempty(result.test_results)
+true
 ```
 """
 struct GradeResult
@@ -107,7 +119,10 @@ struct GradeResult
     failure_message::String
     gradescope_json::String
     html_report::String
+    test_results::Vector{NamedTuple}
 end
+
+GradeResult(args::Vararg{Any,21}) = GradeResult(args..., NamedTuple[])
 
 function GradeResult(passed::Bool, exitcode::Int, stdout::String, stderr::String)
     possible = Dict{String, Int}()
@@ -117,7 +132,7 @@ function GradeResult(passed::Bool, exitcode::Int, stdout::String, stderr::String
     report = _student_grade_report("", passed, exitcode, RubricItem[], ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], awarded, possible, passed ? total : 0, total, :none, "", stdout, stderr)
     html = _build_html_report(report, :none, "")
     gsj = _build_gradescope_json("", CriterionResult[], passed ? total : 0, total)
-    return GradeResult(passed, exitcode, stdout, stderr, "", RubricItem[], awarded, possible, passed ? total : 0, total, report, header, row, ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], false, :none, "", gsj, html)
+    return GradeResult(passed, exitcode, stdout, stderr, "", RubricItem[], awarded, possible, passed ? total : 0, total, report, header, row, ReferenceTestResult[], PropertyCheckResult[], CriterionResult[], false, :none, "", gsj, html, NamedTuple[])
 end
 
 Base.isvalid(result::GradeResult) = result.passed
@@ -136,6 +151,19 @@ The harness runs the reference package's tests against the submitted package in
 an isolated Julia process, then evaluates any `@reference_test` entries and
 `@require`/`@forbid` property checks.
 
+Assertions are recorded without stopping at the first failure. Annotated test
+blocks and ordinary nested `@testset`s report their outcomes independently of
+marks. An exception outside an assertion skips the rest of its group; subsequent
+independent groups continue. Setup/load failures, process exit, and timeouts can
+prevent later tests from running and are reported as such. Completed results
+are preserved. The grader does not install or update dependencies automatically.
+
+By default, any behavioral failure still withholds all ordinary `@marks` points;
+property points remain independent. Passing groups are explicitly reported even
+when their marks are withheld. Use `zero_on_failure=true` to also withhold property
+points after a behavioral failure. Fatal `zero_marks=true` requirements continue
+to zero the entire assignment without hiding successful test outcomes.
+
 # Keywords
 
 - `test_path` — alternate test file (default: `reference/test/runtests.jl`).
@@ -148,6 +176,8 @@ an isolated Julia process, then evaluates any `@reference_test` entries and
 - `append_csv` — append to `csv_path` rather than overwriting (default `true`).
 - `test_timeout_seconds` — kill the submission test process after this many seconds (default `120`, `0` = no limit).
 - `reference_timeout_seconds` — per-reference-test subprocess timeout (default `30`, `0` = no limit).
+- `zero_on_failure` — zero the entire assignment after a behavioral failure (default `false`).
+- `io` — brief failure diagnostics destination (default `stderr`, `nothing` silences it).
 
 # Example
 
@@ -189,29 +219,46 @@ function grade_submission(
     append_csv::Bool=true,
     test_timeout_seconds::Int=120,
     reference_timeout_seconds::Int=30,
+    zero_on_failure::Bool=false,
+    io::Union{Nothing, IO}=stderr,
 )
     isdir(reference_path) || throw(ArgumentError("reference_path is not a directory"))
     isdir(submission_path) || throw(ArgumentError("submission_path is not a directory"))
     csv_format in (:default, :canvas, :moodle, :blackboard) ||
         throw(ArgumentError("unknown csv_format :$csv_format — choose :default, :canvas, :moodle, or :blackboard"))
+    test_timeout_seconds >= 0 || throw(ArgumentError("test_timeout_seconds must be non-negative"))
+    reference_timeout_seconds >= 0 || throw(ArgumentError("reference_timeout_seconds must be non-negative"))
     selected_test_path = test_path === nothing ? joinpath(reference_path, "test", "runtests.jl") : test_path
     isfile(selected_test_path) || throw(ArgumentError("test_path is not a file: $selected_test_path"))
 
     rubric, reference_specs = _collect_rubric_and_specs(reference_path)
-    test_expr = "include($(repr(abspath(selected_test_path))))"
-    cmd = `$( _julia_cmd_with_project(submission_path) ) -e $test_expr`
+    results_path = tempname()
+    runner = joinpath(@__DIR__, "grading_runner.jl")
+    grader_project = something(Base.active_project(), joinpath(@__DIR__, "..", "Project.toml"))
+    cmd = `$( _julia_cmd_with_project(submission_path) ) --startup-file=no $runner $(abspath(selected_test_path)) $results_path $(dirname(grader_project))`
     stdout_path = tempname()
     stderr_path = tempname()
     try
-        proc, timed_out = _run_with_timeout(cmd, stdout_path, stderr_path; timeout_seconds=test_timeout_seconds)
-        stdout_text = read(stdout_path, String)
-        stderr_text = read(stderr_path, String)
+        exitcode, timed_out, launch_error = try
+            proc, expired = _run_with_timeout(cmd, stdout_path, stderr_path; timeout_seconds=test_timeout_seconds)
+            (Int(proc.exitcode), expired, "")
+        catch err
+            err isa InterruptException && rethrow()
+            (-1, false, "Could not launch grading subprocess: " * sprint(showerror, err))
+        end
+        stdout_text = isfile(stdout_path) ? read(stdout_path, String) : ""
+        stderr_text = (isfile(stderr_path) ? read(stderr_path, String) : "") * launch_error
+        test_results, snapshot_error = _read_behavioral_results(results_path)
+        stderr_text *= snapshot_error
+        completed = !isempty(test_results) && first(test_results).status != :incomplete && isempty(snapshot_error)
         reference_results = _run_reference_tests(reference_path, submission_path, reference_specs; timeout_seconds=reference_timeout_seconds)
         property_results = _run_property_checks(submission_path, rubric)
-        zeroed = any(result -> result.zero_marks && !result.passed, property_results)
-        behavioral_passed = !timed_out && success(proc) && all(result -> result.passed, reference_results)
+        behavioral_passed = !timed_out && exitcode == 0 && completed && first(test_results).status == :passed && all(result -> result.passed, reference_results)
+        property_zeroed = any(result -> result.zero_marks && !result.passed, property_results)
+        zeroed = property_zeroed || (zero_on_failure && !behavioral_passed)
         passed = behavioral_passed && all(result -> result.passed || result.points == 0, property_results) && !zeroed
-        criterion_results = _criterion_results(rubric, property_results, reference_results, behavioral_passed, zeroed)
+        criterion_results = _criterion_results(rubric, property_results, reference_results, behavioral_passed, zeroed;
+            test_results=test_results, reference_path=abspath(reference_path))
         possible = _rubric_points_by_category(rubric)
         awarded = _awarded_points_by_category(rubric, criterion_results)
         total_possible = sum(values(possible); init=0)
@@ -220,11 +267,41 @@ function grade_submission(
         header_values = vcat(["student_id", "status"], categories, ["total"])
         row_values = vcat([String(student_id), passed ? "passed" : "failed"], [string(get(awarded, category, 0)) for category in categories], [string(total_awarded)])
         header, row = _grade_csv(header_values, row_values)
-        category, cat_message = _categorize_failure(proc.exitcode, stdout_text, stderr_text, timed_out, zeroed)
-        report = _student_grade_report(String(student_id), passed, proc.exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, category, cat_message, stdout_text, stderr_text)
+        category, cat_message = _categorize_failure(exitcode, stdout_text, stderr_text, timed_out, property_zeroed)
+        if category == :none && !completed
+            category, cat_message = :execution_failure, "Test process ended without a completed result; grading is incomplete. Inspect the captured output."
+        elseif category == :none && any(r -> !r.passed, reference_results)
+            failed_reference = first(filter(r -> !r.passed, reference_results))
+            category = startswith(failed_reference.message, "reference errored:") ? :reference_failure : :test_failure
+            if startswith(failed_reference.message, "submission errored:")
+                inferred, _ = _categorize_failure(1, "", failed_reference.message, false, false)
+                category = inferred == :execution_failure ? :test_error : inferred
+            end
+            cat_message = first(split(failed_reference.message, '\n'))
+        elseif category == :none && !passed
+            category, cat_message = if !isempty(test_results) && first(test_results).status == :not_run
+                (:execution_failure, "No assertions were evaluated; skipped or empty groups do not demonstrate correctness.")
+            else
+                (:property_failure, "One or more marked submission requirements failed; see Code Properties.")
+            end
+        end
+        report = _student_grade_report(String(student_id), passed, exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, category, cat_message, stdout_text, stderr_text;
+            test_results=test_results)
         html = _build_html_report(report, category, cat_message)
-        gsj = _build_gradescope_json(String(student_id), criterion_results, total_awarded, total_possible)
-        result = GradeResult(passed, proc.exitcode, stdout_text, stderr_text, String(student_id), rubric, awarded, possible, total_awarded, total_possible, report, header, row, reference_results, property_results, criterion_results, timed_out, category, cat_message, gsj, html)
+        gsj = _build_gradescope_json(String(student_id), criterion_results, total_awarded, total_possible;
+            summary=string(category, ": ", cat_message))
+        result = GradeResult(passed, exitcode, stdout_text, stderr_text, String(student_id), rubric, awarded, possible, total_awarded, total_possible, report, header, row, reference_results, property_results, criterion_results, timed_out, category, cat_message, gsj, html, test_results)
+        if io !== nothing && !passed
+            println(io, "Grading ", student_id, ": ", category, " - ", cat_message)
+            if !isempty(test_results)
+                totals = first(test_results)
+                println(io, "Tests: ", totals.passed, " passed, ", totals.failed, " failed, ", totals.errored, " errors, ", totals.broken, " broken/skipped. Marks: ", total_awarded, "/", total_possible, ".")
+                if !isempty(totals.details)
+                    lines = filter(!isempty, strip.(split(first(totals.details), '\n')))
+                    println(io, "First diagnostic: ", first(join(first(lines, 3), " "), 400))
+                end
+            end
+        end
         report_path === nothing || write(report_path, report)
         html_path === nothing || write(html_path, html)
         gradescope_path === nothing || write(gradescope_path, gsj)
@@ -236,11 +313,33 @@ function grade_submission(
     finally
         rm(stdout_path; force=true)
         rm(stderr_path; force=true)
+        rm(results_path; force=true)
+        rm(results_path * ".next"; force=true)
+    end
+end
+
+function _read_behavioral_results(path::AbstractString)
+    isfile(path) || return NamedTuple[], ""
+    try
+        rows = TOML.parsefile(path)["tests"]
+        results = NamedTuple[(name=String(r["name"]), status=Symbol(r["status"]),
+            passed=Int(r["passed"]), failed=Int(r["failed"]), errored=Int(r["errored"]), broken=Int(r["broken"]),
+            details=String.(r["details"]), marks=String.(r["marks"])) for r in rows]
+        return results, ""
+    catch err
+        return NamedTuple[], "Could not read grading results: " * sprint(showerror, err)
     end
 end
 
 function _run_property_checks(submission_path::AbstractString, rubric::Vector{RubricItem})
-    project = _source_project_from_path(abspath(submission_path))
+    project = try
+        _source_project_from_path(abspath(submission_path))
+    catch err
+        err isa InterruptException && rethrow()
+        return [PropertyCheckResult(item.kind, item.visibility, item.points, item.description,
+            item.zero_marks, false, "property check could not run: " * sprint(showerror, err))
+            for item in rubric if _is_property_criterion(item.kind)]
+    end
     results = PropertyCheckResult[]
     for item in rubric
         _is_property_criterion(item.kind) || continue
@@ -303,6 +402,9 @@ function _evaluate_reference_spec(package_path::AbstractString, spec::ReferenceT
         err = isfile(stderr_path) ? strip(read(stderr_path, String)) : ""
         isempty(err) && (err = "reference-test process failed")
         return [(ok=false, input="", output="", error=err)]
+    catch err
+        err isa InterruptException && rethrow()
+        return [(ok=false, input="", output="", error="reference-test execution failed: " * sprint(showerror, err))]
     finally
         rm(output_path; force=true)
         rm(script_path; force=true)
@@ -437,7 +539,8 @@ function _rubric_points_by_category(items::Vector{RubricItem})
     return points
 end
 
-function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector{PropertyCheckResult}, reference_results::Vector{ReferenceTestResult}, behavioral_passed::Bool, zeroed::Bool)
+function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector{PropertyCheckResult}, reference_results::Vector{ReferenceTestResult}, behavioral_passed::Bool, zeroed::Bool;
+    test_results::Union{Nothing, Vector{NamedTuple}}=nothing, reference_path::AbstractString="")
     results = CriterionResult[]
     property_queue = copy(property_results)
     for item in rubric
@@ -445,13 +548,24 @@ function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector
             passed = behavioral_passed && !zeroed
             awarded = passed ? item.points : 0
             message = zeroed ? "assignment zeroed by a gating requirement" : passed ? "behavioural tests passed" : "behavioural tests failed"
+            if test_results !== nothing
+                key = string(joinpath(reference_path, item.path), ":", item.line)
+                related = filter(r -> key in r.marks, test_results)
+                passed = !isempty(related) && all(r -> r.status == :passed, related)
+                passed || (awarded = 0)
+                message = isempty(related) ? "not run: criterion was not reached" :
+                    join(String["$(r.status): $(r.passed) passed, $(r.failed) failed, $(r.errored) errors, $(r.broken) broken/skipped" for r in related], "; ")
+                if passed && awarded == 0 && item.points > 0
+                    message *= "; marks withheld by the overall scoring policy"
+                end
+            end
             push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, awarded, item.description, passed, message, item.zero_marks))
         elseif _is_property_criterion(item.kind)
             result = isempty(property_queue) ? nothing : popfirst!(property_queue)
-            passed = result !== nothing && result.passed && !zeroed
-            awarded = passed ? item.points : 0
+            passed = result !== nothing && result.passed
+            awarded = passed && !zeroed ? item.points : 0
             message = result === nothing ? "property was not evaluated" : result.message
-            zeroed && (message = "assignment zeroed by a gating requirement")
+            zeroed && (message *= "; marks withheld by the overall scoring policy")
             push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, awarded, item.description, passed, message, item.zero_marks))
         elseif item.kind == :reference_test
             fn = _reference_test_fn_name(item.description)
@@ -477,7 +591,8 @@ function _awarded_points_by_category(rubric::Vector{RubricItem}, criterion_resul
     return awarded
 end
 
-function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, failure_category::Symbol, failure_message::AbstractString, stdout::String, stderr::String)
+function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, failure_category::Symbol, failure_message::AbstractString, stdout::String, stderr::String;
+    test_results=NamedTuple[])
     io = IOBuffer()
     println(io, "# Student Feedback Report")
     println(io)
@@ -488,6 +603,20 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
     end
     println(io, "Exit code: ", exitcode)
     println(io, "Total: ", total_awarded, " / ", total_possible, " marks")
+    println(io)
+    println(io, "## Behavioral Test Results")
+    println(io)
+    println(io, "Test outcomes are independent of marks. A passing group can receive zero under the overall scoring policy.")
+    if isempty(test_results)
+        println(io, "No behavioral results were recorded; tests could not start or the process stopped before reporting.")
+    end
+    for result in test_results
+        println(io, "\n- ", result.name, ": **", result.status, "**; ", result.passed, " passed, ", result.failed,
+                " failed, ", result.errored, " errors, ", result.broken, " broken/skipped.")
+        if result.status in (:incomplete, :error)
+            println(io, "  This group may have unexecuted assertions; later independent groups are attempted when execution can continue.")
+        end
+    end
     println(io)
     println(io, "## Mark Summary")
     categories = sort(collect(keys(possible)))
@@ -518,12 +647,13 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
         println(io)
         println(io, "## Code Properties")
         property_queue = copy(property_results)
+        property_scores = [result for result in criterion_results if _is_property_criterion(result.kind)]
         for item in properties
             println(io)
             if _is_property_criterion(item.kind) && !isempty(property_queue)
                 result = popfirst!(property_queue)
                 status = result.passed ? "passed" : "failed"
-                points = result.passed ? result.points : 0
+                points = isempty(property_scores) ? 0 : popfirst!(property_scores).awarded
                 zero_note = result.zero_marks ? " Zeroes assignment if failed." : ""
                 println(io, "- [", result.visibility, "] ", status, ": ", result.description, " (", points, " / ", result.points, " marks).", zero_note)
             else
@@ -646,20 +776,39 @@ end
 Classify why grading failed from process outputs and flags.
 """
 function _categorize_failure(exitcode::Int, stdout::String, stderr::String, timed_out::Bool, zeroed::Bool)
-    timed_out  && return (:timeout,      "submission tests timed out")
-    zeroed     && return (:zero_gate,    "a zero_marks=true requirement failed")
-    exitcode == 0 && return (:none, "")
-    combined = stdout * stderr
-    if occursin(r"Package .* not found|cannot find package|not found in current path"i, combined)
-        return (:load_failure, "package not found — check Project.toml dependencies")
+    timed_out && return (:timeout, "Test execution exceeded the time limit; completed results are preserved. Remaining tests may not have run.")
+    combined = stdout * "\n" * stderr
+    if occursin(r"Could not launch grading|Could not read grading"i, combined)
+        return (:execution_failure, _matching_error_line(combined, r"Could not launch grading|Could not read grading"i))
+    end
+    exitcode == 0 && return zeroed ? (:zero_gate, "A zero-mark policy was triggered; test outcomes are still reported.") : (:none, "")
+    if occursin(r"Package .* not found|cannot find package|not found in current path|does not have .* in its dependencies|does not seem to be installed|required but does not seem"i, combined)
+        detail = _matching_error_line(combined, r"Package .* not found|does not have .* in its dependencies|required but does not seem|does not seem to be installed"i)
+        return (:environment_failure, "Dependency loading failed: $detail Check the submission Project.toml/Manifest.toml and instantiate its environment before grading. This is not evidence of an incorrect answer.")
+    end
+    if occursin(r"Failed to precompile|Failed to precompil|precompilation failed"i, combined)
+        return (:load_failure, "Precompilation failed; inspect the underlying exception in Test Output. The cause may be package code or the environment; do not infer incorrect answers from this alone.")
+    end
+    if occursin(r"ParseError|syntax: "i, combined)
+        return (:load_failure, "Julia could not parse or load code; inspect the file and line in Test Output to locate the submission, reference test, or dependency responsible.")
+    end
+    if occursin(r"Error During Test"i, combined)
+        return (:test_error, "An exception interrupted a test group or setup. Inspect Test Output for its source; later independent groups were attempted where possible.")
     end
     if occursin(r"Test Failed|Some tests did not pass"i, combined)
-        return (:test_failure, "tests failed with exit code $exitcode")
+        return (:test_failure, "One or more assertions disagreed with the reference tests; other groups were still run. Review failed expectations before assigning blame to student code.")
     end
     if occursin(r"LoadError|ParseError|syntax: |UndefVarError.*top-level"i, stderr)
         return (:load_failure, _first_error_line(stderr))
     end
-    return (:test_failure, "tests failed with exit code $exitcode")
+    return (:execution_failure, "Test process exited with code $exitcode without a normal test result; inspect Test Output for an unexpected exit or execution problem.")
+end
+
+function _matching_error_line(text::AbstractString, pattern::Regex)
+    for line in split(text, '\n')
+        occursin(pattern, line) && return strip(line)
+    end
+    return _first_error_line(text)
 end
 
 function _first_error_line(text::AbstractString)
@@ -698,12 +847,13 @@ end
 Build a Gradescope autograder JSON string without requiring an external JSON package.
 Spec: https://gradescope-autograders.readthedocs.io/en/latest/specs/
 """
-function _build_gradescope_json(student_id::AbstractString, criterion_results::Vector{CriterionResult}, total_awarded::Int, total_possible::Int)
+function _build_gradescope_json(student_id::AbstractString, criterion_results::Vector{CriterionResult}, total_awarded::Int, total_possible::Int;
+    summary::AbstractString="")
     io = IOBuffer()
     println(io, "{")
     println(io, "  \"score\": ", total_awarded, ",")
     println(io, "  \"max_score\": ", total_possible, ",")
-    println(io, "  \"output\": ", _json_string("Student: $student_id"), ",")
+    println(io, "  \"output\": ", _json_string("Student: $student_id" * (isempty(summary) ? "" : "\n" * summary)), ",")
     println(io, "  \"visibility\": \"after_published\",")
     print(io,   "  \"tests\": [")
     tests = [r for r in criterion_results if _is_scored_criterion(r.kind)]

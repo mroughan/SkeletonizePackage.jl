@@ -5,6 +5,7 @@ const _SCAFFOLDING_PROXIMITY_LINES = 3
 # Patterns that indicate a scaffolding block already contains a student prompt or
 # failing placeholder, so no warning is needed.
 const _RE_SCAFFOLDING_PROMPT = r"TODO|FIXME|error\(|throw\(|\bmissing\b|unimplemented"i
+const _GENERATED_STUDENT_FILES = Set(["README.md", "STUDENT_INSTRUCTIONS.md", "RUBRIC.md", "AGENTS.md"])
 
 """
     ValidationIssue
@@ -85,7 +86,7 @@ function Base.show(io::IO, report::ValidationReport)
 end
 
 """
-    validate_reference_package(reference_path; io=nothing, run_tests=false)
+    validate_reference_package(reference_path; io=nothing, run_tests=false, copy_paths=nothing)
 
 Validate an annotated teacher reference package and return a [`ValidationReport`](@ref).
 
@@ -94,7 +95,9 @@ inline annotation forms, unterminated blocks, package/module naming mismatches,
 and grading requirements placed in package source. It also reports
 teaching-design warnings, such as unreachable annotated source, solution blocks
 without nearby scaffolding blocks, missing public tests, missing hidden tests,
-or scaffolding code with no obvious TODO/error prompt.
+scaffolding code with no obvious TODO/error prompt, or root files and
+directories that are not listed in `copy_paths` and therefore will not be
+distributed to students.
 
 Pass `run_tests=true` to execute the reference package's public and hidden
 behavioural tests in a fresh Julia process. Failures and timeouts are warnings,
@@ -103,6 +106,9 @@ grading metadata and are not executed as behavioural tests.
 
 Pass `io=stdout` to print a teacher-facing report while returning it. Generation
 and the CLI `validate` command enable `run_tests=true` automatically.
+If `copy_paths` is omitted, validation reads it from a root
+`SkeletonizePackage.inc` when available, otherwise it uses the default copied
+paths.
 
 # Example
 
@@ -124,12 +130,14 @@ Validation report for /path/to/examples/SortingAssignment
 No issues found.
 ```
 """
-function validate_reference_package(reference_path::AbstractString; io::Union{Nothing, IO}=nothing, run_tests::Bool=false)
+function validate_reference_package(reference_path::AbstractString; io::Union{Nothing, IO}=nothing, run_tests::Bool=false, copy_paths=nothing)
     root = abspath(String(reference_path))
     isdir(root) || throw(ArgumentError("reference_path is not a directory: $reference_path"))
     issues = ValidationIssue[]
     _validate_package_shape!(issues, root)
     _validate_source_wiring!(issues, root)
+    copied = _validation_copy_paths(root, copy_paths)
+    _validate_copy_paths!(issues, root, copied)
     annotation_counts = Dict(name => 0 for name in ANNOTATION_OPENERS)
 
     for (walkroot, dirs, files) in walkdir(root)
@@ -163,6 +171,40 @@ function validate_reference_package(reference_path::AbstractString; io::Union{No
         println(io)
     end
     return report
+end
+
+function _validation_copy_paths(root::String, copy_paths)
+    copy_paths !== nothing && return _metadata_copy_paths(copy_paths)
+    config_path = joinpath(root, "SkeletonizePackage.inc")
+    if isfile(config_path)
+        try
+            config = read_assignment_config(config_path)
+            _same_validation_path(config.reference_path, root) && return copy(config.copy_paths)
+        catch
+            return copy(DEFAULT_COPY_PATHS)
+        end
+    end
+    return copy(DEFAULT_COPY_PATHS)
+end
+
+function _validate_copy_paths!(issues, root::String, copy_paths)
+    for name in sort(readdir(root))
+        _is_teacher_only_file(name) && continue
+        name in _GENERATED_STUDENT_FILES && continue
+        path = joinpath(root, name)
+        if isdir(path)
+            name in TEACHER_ONLY_DIRS && continue
+            _should_descend_for_copy(name, copy_paths) && continue
+            _push_issue!(issues, :warning, name, nothing, "path is not listed in copy_paths and will be absent from the student skeleton", "Add `$name` to `copy_paths` if students should receive it.")
+        else
+            _should_copy_path(name, copy_paths) && continue
+            _push_issue!(issues, :warning, name, nothing, "file is not listed in copy_paths and will be absent from the student skeleton", "Add `$name` to `copy_paths` if students should receive it.")
+        end
+    end
+end
+
+function _same_validation_path(a::AbstractString, b::AbstractString)
+    return rstrip(abspath(a), ['/', '\\']) == rstrip(abspath(b), ['/', '\\'])
 end
 
 function _validate_reference_tests!(issues, root::String)

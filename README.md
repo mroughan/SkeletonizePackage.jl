@@ -39,13 +39,11 @@ skeleton to create their submission package.
 
 ## Quick start
 
-From Julia, start by creating a teacher reference package template, then run the
-pipeline on the included reference example:
+From Julia, run the pipeline on the included `SortingAssignment` reference
+example:
 
 ```julia
 using SkeletonizePackage
-
-create_assignment("MyAssignment"; ai_policy=:recorded)
 
 reference = "examples/SortingAssignment"
 skeleton = "SortingAssignmentSkeleton"
@@ -95,6 +93,14 @@ Or use the small command-line entry point:
 julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate examples/SortingAssignment
 julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate examples/SortingAssignment SortingAssignmentSkeleton --force --ai-policy recorded
 julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade examples/SortingAssignment SortingAssignmentSubmission --student-id s123 --report s123-feedback.md --csv marks.csv
+```
+
+To start a fresh assignment instead of using the checked-in example, scaffold a
+teacher package and then generate from its config:
+
+```julia
+create_assignment("MyAssignment"; ai_policy=:recorded)
+generate_skeleton_package("MyAssignment/SkeletonizePackage.inc")
 ```
 
 ![SkeletonizePackage.jl workflow pipeline](assets/workflow-pipeline.svg)
@@ -191,7 +197,7 @@ Then generate the skeleton version:
 ```julia
 using SkeletonizePackage
 
-generate_skeleton_package("SortingAssignment", "SortingAssignmentSkeleton"; force=true)
+generate_skeleton_package("examples/SortingAssignment", "SortingAssignmentSkeleton"; force=true)
 ```
 
 After students submit completed packages, grade each submission against the same
@@ -199,7 +205,7 @@ reference package:
 
 ```julia
 grade_submission(
-    "SortingAssignment",
+    "examples/SortingAssignment",
     "SortingAssignmentSubmission";
     student_id="s123",
     report_path="s123-feedback.md",
@@ -266,6 +272,9 @@ to students, for example:
 copy_paths = "Project.toml, SkeletonizePackage.inc, src, test, data, assets"
 ```
 
+Validation warns about root files or directories that are not listed in
+`copy_paths`, because they will not be copied into the student skeleton.
+
 `ai_policy` controls the generated `AGENTS.md` file. It can be:
 
 - `forbidden`: AI agents and AI coding assistants are strictly forbidden.
@@ -285,7 +294,13 @@ submission do not affect automarking. The returned `GradeResult` includes:
 - `html_report`: The same feedback as a self-contained HTML document.
 - `gradescope_json`: A Gradescope autograder JSON string (always populated).
 - `csv_header` and `csv_row`: a one-row marks summary for class-scale CSV files.
-- `failure_category`: one of `:none`, `:load_failure`, `:test_failure`, `:timeout`, `:zero_gate`.
+- `test_results`: per-group status, assertion counts, and failure details, including
+  a root summary whose counts already include all groups.
+- `failure_category`: distinguishes assertion failures (`:test_failure`), test
+  exceptions (`:test_error`), dependency issues (`:environment_failure`), code or
+  precompilation failures (`:load_failure`), unexpected process problems
+  (`:execution_failure`), reference-oracle failures (`:reference_failure`),
+  property failures (`:property_failure`), `:timeout`, `:zero_gate`, and `:none`.
 - `timed_out`: `true` when the submission test process was killed by the timeout.
 
 ### Keyword options
@@ -301,6 +316,47 @@ submission do not affect automarking. The returned `GradeResult` includes:
 | `append_csv` | `true` | Append to `csv_path` rather than overwrite |
 | `test_timeout_seconds` | `120` | Kill submission test process after N seconds (0 = no limit) |
 | `reference_timeout_seconds` | `30` | Per-reference-test subprocess timeout |
+| `zero_on_failure` | `false` | Also zero property marks after any behavioral failure |
+| `io` | `stderr` | Brief failure diagnostic destination; `nothing` silences it |
+
+### Complete feedback with zero marks
+
+Grading continues after failed assertions and reports each public and hidden
+test group. The default scoring policy is unchanged: any behavioral failure
+withholds all ordinary `@marks` points; property points remain independent.
+`zero_on_failure=true` instead makes the entire assignment zero after such a
+failure. Fatal `zero_marks=true` requirements also zero the entire assignment.
+Neither policy hides what passed: `CriterionResult.passed` describes the test
+outcome, while `awarded` describes the score.
+
+```julia
+result = grade_submission(reference, submission;
+    zero_on_failure=true,
+    report_path="feedback.md",
+)
+result.test_results
+```
+
+The CLI accepts `--zero-on-failure` and prints a brief failure diagnostic even
+when reports are saved to files. Julia callers can use `io=nothing` to silence
+that diagnostic. Full exception details and file/line locations remain in the
+report's Test Output section.
+
+A failed `@test` does not stop later assertions. An exception outside an assertion
+skips the rest of its group, but later independent groups still run. A top-level
+setup/import failure, an explicit process exit, or a timeout can prevent further
+execution. Reports preserve completed results and identify incomplete or unrun
+criteria. Broken/skipped assertions are counted separately; a group containing
+only skipped assertions earns no behavioral marks. Use ordinary `@testset`s;
+explicit third-party testset types are reported as unsupported.
+
+Dependency and precompilation failures are not evidence that an answer is wrong.
+Inspect the named package and underlying exception, check the submission's
+`Project.toml`/`Manifest.toml`, and instantiate its environment before retrying.
+The grader uses the submission environment with the examiner's active project
+as a fallback for test tooling. It does not install packages or rewrite the
+submission. Diagnostics identify the observed failure, but cannot always decide
+whether the student, the reference tests, or the examiner's environment caused it.
 
 ### LMS-ready CSV export
 
@@ -414,8 +470,8 @@ This package has been developed with assistance from multiple AI coding agents:
   code review, refactoring, feature implementation (Gradescope integration, LMS
   CSV export, timeout handling, HTML reports, noise-stripped property checks),
   architecture documentation, test writing, and CHANGELOG maintenance.
-- **OpenAI Codex** — used in earlier stages for initial documentation, tests, and
-  project scaffolding.
+- **OpenAI Codex** — used for initial documentation, tests, project scaffolding,
+  and grading continuation, diagnostics, and regression coverage.
 
 Human review remains responsible for correctness, package design, and release
 decisions. AI-generated code has been reviewed and tested before inclusion.

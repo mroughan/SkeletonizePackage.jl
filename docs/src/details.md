@@ -97,9 +97,19 @@ revealing private test implementations.
 
 Each generated public or teacher-mode test block becomes a named `@testset`,
 using the first `@marks` description as its name. Each `@marks` line creates a
-rubric criterion, but behavioural marks are currently awarded at whole-test-run
-granularity. Prefer one `@marks` line and one coherent behaviour per test block;
+rubric criterion. Behavioral marks retain whole-test-run scoring, while recorded
+outcomes show which groups actually passed, failed, errored, or did not run.
+`zero_on_failure=true` can also withhold property points without suppressing
+those outcomes. Prefer one `@marks` line and one coherent behavior per test block;
 split unrelated criteria into separate `@student_test` or `@hidden_test` blocks.
+
+The grading runner records failed assertions and continues. Exceptions outside
+assertions skip the rest of their group; later independent groups continue.
+Top-level setup problems, timeouts, and process exits can prevent further tests.
+Snapshots retain results recorded before an interruption. Ordinary nested
+`@testset`s are supported; explicit custom testset types are reported as errors.
+Missing packages and precompilation problems produce diagnostics for examiner
+review, not a claim that every hidden assertion failed.
 
 Stable IDs can be supplied with `id="..."` on `@marks`, `@require`, and
 `@forbid`. IDs are useful in moderation, appeals, feedback reports, and grading

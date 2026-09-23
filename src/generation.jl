@@ -64,7 +64,7 @@ function generate_skeleton_package(reference_path::AbstractString, skeleton_path
     copied = _metadata_copy_paths(copy_paths)
     isdir(reference) || throw(ArgumentError("reference_path is not a directory: $reference_path"))
     if validate
-        report = validate_reference_package(reference; io=io, run_tests=true)
+        report = validate_reference_package(reference; io=io, run_tests=true, copy_paths=copied)
         isvalid(report) || throw(ArgumentError("reference package validation failed; fix errors before generating"))
     end
     if ispath(skeleton)

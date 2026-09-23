@@ -82,6 +82,7 @@ assignment
         @test isvalid(result)
         @test result.csv_header == "student_id,status,total"
         @test result.csv_row == ",passed,0"
+        @test isempty(result.test_results)
     end
 
     @testset "ValidationIssue and ValidationReport examples" begin

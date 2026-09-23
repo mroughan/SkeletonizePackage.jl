@@ -8,7 +8,7 @@ Commands:
 - `validate PATH`
 - `generate REFERENCE SKELETON [--force] [--no-validate] [--ai-policy forbidden|recorded|allowed]`
 - `generate --config SkeletonizePackage.inc [--force]`
-- `grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--html PATH] [--gradescope PATH] [--csv PATH] [--csv-format default|canvas|moodle|blackboard] [--replace-csv] [--test-timeout N] [--ref-timeout N]`
+- `grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--html PATH] [--gradescope PATH] [--csv PATH] [--csv-format default|canvas|moodle|blackboard] [--replace-csv] [--test-timeout N] [--ref-timeout N] [--zero-on-failure]`
 - `init PATH [--name NAME] [--force] [--ai-policy forbidden|recorded|allowed]`
 
 # Example
@@ -34,7 +34,10 @@ julia> main([
 0
 ```
 
-The `grade` command prints output paths when `--report` or `--csv` is supplied:
+The `grade` command prints output paths when `--report` or `--csv` is supplied.
+Failures also produce a brief stderr diagnostic even when reports are saved.
+`--zero-on-failure` zeroes the entire assignment after a behavioral failure,
+while preserving passing test outcomes in the report:
 
 ```text
 s123-feedback.md
@@ -85,6 +88,7 @@ function _main_generate(args)
 end
 
 function _main_grade(args)
+    zero_on_failure    = _take_flag!(args, "--zero-on-failure")
     replace_csv        = _take_flag!(args, "--replace-csv")
     student_id         = _take_option!(args, "--student-id")
     report_path        = _take_option!(args, "--report")
@@ -110,6 +114,7 @@ function _main_grade(args)
         append_csv=!replace_csv,
         test_timeout_seconds=test_timeout,
         reference_timeout_seconds=ref_timeout,
+        zero_on_failure=zero_on_failure,
     )
     if report_path === nothing && html_path === nothing
         print(result.student_report)
@@ -166,7 +171,7 @@ Usage:
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- validate PATH
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate REFERENCE SKELETON [--force] [--no-validate] [--ai-policy forbidden|recorded|allowed]
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- generate --config SkeletonizePackage.inc [--force]
-  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--html PATH] [--gradescope PATH] [--csv PATH] [--csv-format default|canvas|moodle|blackboard] [--replace-csv] [--test-timeout N] [--ref-timeout N]
+  julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- grade REFERENCE SUBMISSION [--student-id ID] [--report PATH] [--html PATH] [--gradescope PATH] [--csv PATH] [--csv-format default|canvas|moodle|blackboard] [--replace-csv] [--test-timeout N] [--ref-timeout N] [--zero-on-failure]
   julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- init PATH [--name NAME] [--force] [--ai-policy forbidden|recorded|allowed]
 """)
     return code
