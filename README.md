@@ -310,8 +310,8 @@ Student reports lead with the awarded mark and counts such as "62 of 63
 evaluated checks met expectations," not an overall assignment or group
 "failed" label. Errors and skipped checks are reported separately, with reasons
 and source locations where available. Detailed technical diagnostics remain in
-Test Output. Machine-readable statuses, CSV values, and grading policies are
-unchanged; clearer feedback does not imply partial credit.
+Test Output. Machine-readable statuses still describe test outcomes; scores
+now include proportional credit, including fractional marks.
 
 ### Keyword options
 
@@ -327,25 +327,42 @@ unchanged; clearer feedback does not imply partial credit.
 | `append_csv` | `true` | Append to `csv_path` rather than overwrite |
 | `test_timeout_seconds` | `120` | Kill submission test process after N seconds (0 = no limit) |
 | `reference_timeout_seconds` | `30` | Per-reference-test subprocess timeout |
-| `zero_on_failure` | `false` | Also zero property marks after any behavioral failure |
+| `zero_on_failure` | `false` | Zero the entire assignment after any behavioral failure |
 | `io` | `stderr` | Brief failure diagnostic destination; `nothing` silences it |
 
-### Complete feedback with zero marks
+### Proportional credit by default
 
 Grading continues after failed assertions and reports each public and hidden
-test group. The default scoring policy is unchanged: any behavioral failure
-withholds all ordinary `@marks` points; property points remain independent.
-`zero_on_failure=true` instead makes the entire assignment zero after such a
+test group. Each group earns its allocated points times the fraction of checks
+that succeed. An 8-mark group with 7 of 8 successful checks earns 7 marks; other
+groups keep their credit. Ordinary assertions and each generated reference
+comparison in the group have equal weight. Assertion errors count as unsuccessful;
+skipped/expected-broken checks are excluded. Fractional marks are preserved in
+structured results and all exports. Property points remain independent.
+
+Require every check in one group to succeed only when explicitly intended:
+
+```julia
+@hidden_test begin
+    @marks 8 "essential checks" all_or_nothing=true
+    @test f(1) == 1
+    @test f(2) == 2
+end
+```
+
+This zeros only that group if either check fails. A **GROUP MARKS ZEROED** notice
+at the top of reports and in brief diagnostics identifies the flag, its declaration
+location, and an available failing check. Prefer one criterion
+per group: an executed flag applies to all criteria in the same recorded group.
+Nested ordinary testsets contribute their checks to the enclosing group.
+
+### Explicit whole-assignment zero policies
+
+`zero_on_failure=true` makes the entire assignment zero after a behavioral
 failure. Fatal `zero_marks=true` requirements also zero the entire assignment.
 Neither policy hides what passed: `CriterionResult.passed` describes the test
-outcome, while `awarded` describes the score.
-
-The default policy is reported separately as **BEHAVIORAL MARKS WITHHELD**, with
-the triggering checks and locations. This explains why a group can meet every
-expectation yet receive zero points when another group does not. It is not a
-fatal-rule notice: property points remain independently available, and no
-forbidden-code finding is implied. Setting `zero_on_failure=false` does not
-enable per-group scoring; it only leaves property points independent.
+outcome, while `awarded` describes the score. A criterion can earn partial credit
+without every check passing. No default global behavioral withholding remains.
 
 When either whole-assignment zero policy fires, the report begins with
 **ASSIGNMENT ZEROED**, naming the triggering checks and available file/line
@@ -372,8 +389,9 @@ A failed `@test` does not stop later assertions. An exception outside an asserti
 skips the rest of its group, but later independent groups still run. A top-level
 setup/import failure, an explicit process exit, or a timeout can prevent further
 execution. Reports preserve completed results and identify incomplete or unrun
-criteria. Broken/skipped assertions are counted separately; a group containing
-only skipped assertions earns no behavioral marks. Use ordinary `@testset`s;
+criteria. Empty or skipped-only groups without oracle comparisons earn zero.
+Interrupted groups receive zero pending review because their remaining check
+count is unknown; completed independent groups retain credit. Use ordinary `@testset`s;
 explicit third-party testset types are reported as unsupported.
 
 Dependency and precompilation failures are not evidence that an answer is wrong.
@@ -503,7 +521,7 @@ This package has been developed with assistance from multiple AI coding agents:
   CSV export, timeout handling, HTML reports, noise-stripped property checks),
   architecture documentation, test writing, and CHANGELOG maintenance.
 - **OpenAI Codex** — used for initial documentation, tests, project scaffolding,
-  grading continuation, diagnostics, regression coverage, and the grading
+  grading continuation, proportional group scoring, diagnostics, regression coverage, and the grading
   documentation and generated-guidance audit.
 
 Human review remains responsible for correctness, package design, and release

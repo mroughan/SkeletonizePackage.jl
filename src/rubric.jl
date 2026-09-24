@@ -8,7 +8,11 @@ struct RubricItem
     spec::Union{Nothing, Expr}
     path::String
     line::Int
+    all_or_nothing::Bool
 end
+
+RubricItem(id, kind, visibility, points, description, zero_marks, spec, path, line) =
+    RubricItem(id, kind, visibility, points, description, zero_marks, spec, path, line, false)
 
 struct ReferenceTestSpec
     visibility::Symbol
@@ -29,7 +33,7 @@ _is_scored_criterion(kind::Symbol) = kind in _SCORED_CRITERION_KINDS
     _parse_marks_line(stripped)
 
 Parse a single stripped source line as an `@marks` call.
-Returns a named tuple `(points, description, id)` on success, `nothing` on failure.
+Returns a named tuple `(points, description, id, all_or_nothing)` on success, `nothing` on failure.
 """
 function _parse_marks_line(stripped::AbstractString)
     parsed = Meta.parse(stripped; raise=false)
@@ -41,6 +45,7 @@ function _parse_marks_line(stripped::AbstractString)
     points < 0 && return nothing
     description = nothing
     id = nothing
+    all_or_nothing = false
     for arg in parsed.args[4:end]
         if arg isa String
             description === nothing || return nothing
@@ -51,6 +56,9 @@ function _parse_marks_line(stripped::AbstractString)
             if key == :id
                 value isa String || return nothing
                 id = value
+            elseif key == :all_or_nothing
+                value isa Bool || return nothing
+                all_or_nothing = value
             else
                 return nothing
             end
@@ -62,7 +70,7 @@ function _parse_marks_line(stripped::AbstractString)
     isempty(strip(description)) && return nothing
     occursin(r"[\r\n]", description) && return nothing
     _valid_rubric_id(id) || return nothing
-    return (points=Int(points), description=description, id=id)
+    return (points=Int(points), description=description, id=id, all_or_nothing=all_or_nothing)
 end
 
 """
@@ -95,7 +103,7 @@ function _collect_rubric_and_specs(reference_path::AbstractString)
                         sline = strip(line)
                         marks = _parse_marks_line(sline)
                         if marks !== nothing
-                            push!(items, RubricItem(_rubric_id(marks.id, :marks, visibility, marks.description, length(items) + 1), :marks, visibility, marks.points, marks.description, false, nothing, rel, i + offset))
+                            push!(items, RubricItem(_rubric_id(marks.id, :marks, visibility, marks.description, length(items) + 1), :marks, visibility, marks.points, marks.description, false, nothing, rel, i + offset, marks.all_or_nothing))
                             continue
                         end
                         property = _parse_property_line(sline)
@@ -146,13 +154,16 @@ test cases. Each `@marks` line creates a separate criterion. Test blocks are
 shown as named testsets using their first marks description; teachers are
 encouraged to keep one coherent marked criterion per block.
 
-Test outcomes and marks are separate. By default, all ordinary test marks
-require an overall passing behavioral run; passing code properties can earn
-points independently. A teacher-selected whole-assignment zero policy or a
-failed fatal requirement can withhold all points without hiding passing
-outcomes. Per-group feedback does not imply partial credit. Groups without
-evaluated assertions earn no behavioral marks; reference-oracle metadata is
-evaluated separately. Confirm the scoring policy in the assignment instructions.
+Test outcomes and marks are separate. By default, each group earns proportional
+credit: points times successful checks divided by evaluated checks. Assertions
+and generated reference comparisons in the group have equal weight. Assertion
+errors count as unsuccessful; skipped/broken checks are excluded. An explicit
+`all_or_nothing=true` flag requires every evaluated check in that group to pass.
+Empty groups earn zero. Interrupted groups receive zero pending review because
+their remaining check count is unknown; completed independent groups retain credit.
+Passing code properties earn points independently. A teacher-selected
+whole-assignment zero policy or a failed fatal requirement can withhold all points
+without hiding passing outcomes. Confirm the policy in the assignment instructions.
 
 Total: $total marks
 
@@ -176,6 +187,7 @@ function _rubric_marks_section(title::AbstractString, items::Vector{RubricItem})
         for item in items
             println(io)
             println(io, "- `", item.id, "`: ", item.points, " mark", item.points == 1 ? "" : "s", ": ", item.description)
+            item.all_or_nothing && println(io, "  All-or-nothing scoring for the enclosing group (`all_or_nothing=true`).")
         end
     end
     return String(take!(io)) |> rstrip

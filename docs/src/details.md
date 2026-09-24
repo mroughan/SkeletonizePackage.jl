@@ -100,10 +100,11 @@ revealing private test implementations.
 
 Each generated public or teacher-mode test block becomes a named `@testset`,
 using the first `@marks` description as its name. Each `@marks` line creates a
-rubric criterion. Behavioral marks retain whole-test-run scoring, while recorded
-outcomes show which groups actually passed, failed, errored, or did not run.
-`zero_on_failure=true` can also withhold property points without suppressing
-those outcomes. Prefer one `@marks` line and one coherent behavior per test block;
+rubric criterion. Each group earns proportional credit for successful assertions
+and generated oracle comparisons. Set `all_or_nothing=true` on `@marks` to require
+all checks in that group to pass. `zero_on_failure=true` instead zeros the entire
+assignment after a behavioral failure without suppressing recorded outcomes.
+Prefer one `@marks` line and one coherent behavior per test block;
 split unrelated criteria into separate `@student_test` or `@hidden_test` blocks.
 
 The grading runner records failed assertions and continues. Exceptions outside

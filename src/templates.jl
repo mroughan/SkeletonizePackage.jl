@@ -66,9 +66,11 @@ The files show the main features:
 
 Grade submissions against this original reference package. Failed assertions
 do not stop later grading tests, and reports separate observed outcomes from
-awarded marks. Default scoring withholds all ordinary behavioral marks after a
-behavioral failure; property points are independent. Use `zero_on_failure=true`
-(CLI: `--zero-on-failure`) to also withhold property points. Record your policy
+awarded marks. Default scoring gives each group proportional credit for successful
+checks, including generated reference comparisons. Add `all_or_nothing=true` to
+`@marks` to zero only that group on a failed check. Property points are independent.
+Use `zero_on_failure=true` (CLI: `--zero-on-failure`) to zero the entire assignment
+after a behavioral failure. Record your policy
 in `GRADING_PLAN.md` and communicate it to students.
 
 The grader does not install dependencies. Review dependency/loading diagnostics
@@ -246,11 +248,14 @@ allocated across public tests, hidden tests, and source-code requirements.
 Passing the visible tests is important, but hidden criteria and requirements
 such as exports or docstrings may also carry marks.
 
-Grading reports test outcomes separately from awarded marks. By default, a
-behavioral failure withholds all ordinary test marks, while passing source-code
-properties can still earn points. The teacher may choose a whole-assignment
-zero policy instead. Fatal requirements can also zero the assignment. Passing
-outcomes remain visible to the examiner even when no marks are awarded.
+Grading reports test outcomes separately from awarded marks. By default, each
+group earns proportional credit for successful checks, including generated reference
+comparisons. Assertion errors count as unsuccessful; skipped/broken checks are
+excluded. An explicit `all_or_nothing=true` rule requires all checks in that group
+to pass. Empty groups earn zero; interrupted groups receive zero pending review.
+Other completed groups and passing code properties retain their credit unless
+the teacher selects a whole-assignment zero policy or a fatal requirement fires.
+Passing outcomes remain visible even when no marks are awarded.
 
 The grader continues after failed assertions, but setup errors and interrupted
 execution can prevent later tests from running. Local `Pkg.test()` uses Julia's
@@ -339,7 +344,7 @@ Most implementation work belongs under `src/`. Run the public tests with
 `julia --project=. -e 'using Pkg; Pkg.test()'`.
 
 Grading uses the teacher's original tests and reports outcomes separately from
-marks. A passing group can receive zero under the assignment's scoring policy;
+marks. Groups earn proportional credit unless an explicit zeroing rule applies;
 see `STUDENT_INSTRUCTIONS.md` and `RUBRIC.md` for details.
 """)
 end
@@ -466,7 +471,9 @@ function write_grading_plan(reference_path::AbstractString; plan_path::AbstractS
     println(io, "Grading reports test outcomes independently of marks and continues after failed assertions.")
     println(io, "Use `zero_on_failure=true` to zero the entire assignment after a behavioral failure while retaining those outcomes.")
     println(io, "An ASSIGNMENT ZEROED notice names the triggering checks and available source locations at the top of reports and in the brief diagnostic.")
-    println(io, "BEHAVIORAL MARKS WITHHELD identifies the default whole-run policy separately: a check elsewhere can withhold marks for a passing group without a fatal rule or forbidden-code finding.")
+    println(io, "Default group scoring is proportional: points times successful checks divided by evaluated checks, including generated reference comparisons. Assertion errors count as unsuccessful; skipped/broken checks are excluded.")
+    println(io, "Set `all_or_nothing=true` on `@marks` to zero only that group on a failed check. Empty groups earn zero; interrupted groups receive zero pending review. Completed independent groups retain credit unless a whole-assignment policy applies.")
+    println(io, "A GROUP MARKS ZEROED notice identifies explicit group rules and failing-check locations at the top of reports and in brief diagnostics.")
     println(io, "Review dependency/loading diagnostics before finalizing marks; an environment failure is not proof of an incorrect answer.")
     println(io, "The grader does not install dependencies. Preserve submissions before repairing environments.")
     println(io, "Review reports for private test expressions and inputs before sharing them with students.")
@@ -532,7 +539,7 @@ Use this checklist before distributing the generated student skeleton.
 - [ ] If ASSIGNMENT ZEROED appears, review its triggering checks and file/line locations before confirming the zero.
 - [ ] Resolve missing dependencies and other execution problems before finalizing marks.
 - [ ] Decide whether to use `zero_on_failure=true` for whole-assignment zero scoring.
-- [ ] Communicate the scoring policy before assessment; passing groups do not imply partial credit.
+- [ ] Review proportional credit and any explicit `all_or_nothing=true` group flags; communicate the policy before assessment.
 - [ ] Preserve original submissions before environment repairs; the grader does not install dependencies.
 - [ ] Review diagnostic reports for hidden-test details before sharing them with students.
 - [ ] Inspect the CSV row and confirm category totals.

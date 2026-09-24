@@ -16,13 +16,15 @@ mutable struct RecordedTestSet <: Test.AbstractTestSet
     counts::Vector{Int}
     details::Vector{String}
     marks::Vector{String}
+    references::Vector{String}
+    aborted::Bool
     completed::Bool
 end
 
 function RecordedTestSet(description; kwargs...)
     parent = Test.get_testset_depth() == 0 ? nothing : Test.get_testset()
     index = findfirst(x -> x === parent, SETS)
-    ts = RecordedTestSet(string(description), something(index, 0), zeros(Int, 4), String[], String[], false)
+    ts = RecordedTestSet(string(description), something(index, 0), zeros(Int, 4), String[], String[], String[], false, false)
     push!(SETS, ts)
     checkpoint()
     return ts
@@ -47,7 +49,9 @@ function rows()
              "passed" => counts[1], "failed" => counts[2],
              "errored" => counts[3], "broken" => counts[4],
              "details" => reduce(vcat, (SETS[j].details for j in indices)),
-             "marks" => ts.marks)
+             "marks" => ts.marks,
+             "references" => unique(reduce(vcat, (SETS[j].references for j in indices))),
+             "aborted" => any(j -> SETS[j].aborted || !SETS[j].completed, indices))
     end
 end
 
@@ -62,6 +66,7 @@ end
 function Test.record(ts::RecordedTestSet, result::Test.Result)
     index = result isa Test.Pass ? 1 : result isa Test.Fail ? 2 : result isa Test.Error ? 3 : 4
     ts.counts[index] += 1
+    result isa Test.Error && result.test_type == :nontest_error && (ts.aborted = true)
     if index in (2, 3)
         detail = sprint(show, result)
         push!(ts.details, detail)
@@ -76,6 +81,7 @@ Test.record(::RecordedTestSet, ::RecordedTestSet) = nothing
 # Explicit foreign testset types are not silently treated as successful.
 function Test.record(ts::RecordedTestSet, child::Test.AbstractTestSet)
     ts.counts[3] += 1
+    ts.aborted = true
     detail = "Unsupported explicit testset type: $(typeof(child)); use ordinary @testset blocks."
     push!(ts.details, detail)
     println(stderr, detail)
@@ -89,10 +95,10 @@ function Test.finish(ts::RecordedTestSet)
     return ts
 end
 
-function mark!(path, line)
+function mark!(path, line, reference=false)
     ts = Test.get_testset()
     ts isa RecordedTestSet || return
-    push!(ts.marks, string(abspath(path), ":", line))
+    push!(reference ? ts.references : ts.marks, string(abspath(path), ":", line))
     checkpoint()
 end
 
@@ -121,6 +127,8 @@ function instrument(ex, path)
                         label, body)
         elseif name == Symbol("@marks")
             return Expr(:call, GlobalRef(GradingRunner, :mark!), path, ex.args[2].line)
+        elseif name == Symbol("@reference_test")
+            return Expr(:call, GlobalRef(GradingRunner, :mark!), path, ex.args[2].line, true)
         end
     end
     return Expr(ex.head, (instrument(arg, path) for arg in ex.args)...)

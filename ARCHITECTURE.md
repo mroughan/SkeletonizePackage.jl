@@ -217,14 +217,25 @@ interruptions; unfinished groups and unreached criteria are not called failures
 of assertions that never ran. Explicit foreign testset types are unsupported and
 reported as an error rather than silently discarded.
 
-The existing scoring default remains conservative: all ordinary behavioral
-marks require an overall passing behavioral run. Property points are independent.
-`zero_on_failure=true` additionally withholds property points after a behavioral
-failure. Fatal property gates still zero the assignment. Neither scoring policy
-changes the recorded pass/fail outcomes, including `CriterionResult.passed`.
-Per-group outcomes do not imply automatic partial-credit scoring.
-Oracle annotations are separate metadata, not assertions within their enclosing
-groups. Empty or skipped-only groups do not earn ordinary behavioral marks.
+The default score for each marked group is its points times successful checks
+divided by evaluated checks. Ordinary assertions (including descendants) and each
+generated oracle comparison have equal weight. Assertion errors are unsuccessful;
+broken/skipped checks are excluded. Oracle ownership uses recorded declaration
+file/line locations, not function names. Oracle-only groups can earn credit;
+metadata outside marked groups has no independent points allocation.
+
+An executed `@marks ... all_or_nothing=true` flag makes all criteria in that same
+recorded group atomic. Unrelated groups retain credit. Empty groups earn zero;
+interrupted groups receive zero pending review because their remaining check
+count is unknown. Snapshots record oracle locations and interruption state,
+including outside-assertion exceptions, separately from assertion errors.
+
+`CriterionResult.awarded`, category awarded totals, and `GradeResult.total_awarded`
+use `Float64`; possible points remain integers. All report/export formats preserve
+fractional credit. Property points remain independent. `zero_on_failure=true`
+explicitly zeros the entire assignment after a behavioral failure; fatal property
+gates also zero the assignment. Neither policy changes recorded outcomes,
+including `CriterionResult.passed`. Zero-policy reports retain triggering locations.
 
 The child uses the submission project plus the examiner's active project as
 fallback test tooling, with startup files disabled. No automatic dependency

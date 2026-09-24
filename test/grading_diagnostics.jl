@@ -36,7 +36,7 @@ end
         out = IOBuffer()
         result = grade_submission(reference, submission; io=out)
         @test !isvalid(result)
-        @test result.total_awarded == 1
+        @test result.total_awarded == 11
         @test result.failure_category == :test_error
         diagnostic = String(take!(out))
         @test occursin("test_error", diagnostic)
@@ -44,17 +44,8 @@ end
         @test occursin("runtests.jl:", diagnostic)
         @test !occursin("ASSIGNMENT ZEROED", diagnostic)
         @test !occursin("ASSIGNMENT ZEROED", result.student_report)
-        @test startswith(result.failure_message, "BEHAVIORAL MARKS WITHHELD:")
-        @test occursin("BEHAVIORAL MARKS WITHHELD", first(split(diagnostic, '\n')))
-        @test occursin("Property checks are scored separately", result.failure_message)
-        @test occursin("no fatal zero-mark rule was triggered", result.failure_message)
-        top = first(split(result.student_report, "## Behavioral Test Results"))
-        @test occursin("## BEHAVIORAL MARKS WITHHELD", top)
-        @test occursin("withholds all 14 behavioral marks", top)
-        @test occursin("$(test_path):5", top)
-        @test occursin("does not itself indicate forbidden code", top)
-        @test occursin("BEHAVIORAL MARKS WITHHELD", result.html_report)
-        @test occursin("BEHAVIORAL MARKS WITHHELD", result.gradescope_json)
+        @test !occursin("BEHAVIORAL MARKS WITHHELD", result.failure_message)
+        @test occursin("Total: 11 / 15 marks", result.student_report)
         root = first(result.test_results)
         @test (root.passed, root.failed, root.errored, root.broken) == (3, 1, 1, 1)
         by_id = Dict(r.id => r for r in result.criterion_results)
@@ -62,9 +53,12 @@ end
         @test !by_id["error"].passed
         @test by_id["later"].passed
         @test by_id["included"].passed
-        @test by_id["included"].awarded == 0
-        @test occursin("marks withheld", by_id["included"].message)
-        @test occursin("see BEHAVIORAL MARKS WITHHELD", by_id["included"].message)
+        @test by_id["first"].awarded == 1
+        @test by_id["error"].awarded == 0
+        @test occursin("Review required", by_id["error"].message)
+        @test by_id["later"].awarded == 4
+        @test by_id["included"].awarded == 5
+        @test occursin("Proportional credit", by_id["included"].message)
         @test occursin("broken setup inside a group", result.stderr)
         @test occursin("Behavioral Test Results", result.student_report)
         @test occursin("Behavioral Test Results", result.html_report)
@@ -113,7 +107,7 @@ end
         @test occursin("zero_on_failure=true", plan)
         @test occursin("dependency/loading", plan)
         @test occursin("ASSIGNMENT ZEROED", plan)
-        @test occursin("BEHAVIORAL MARKS WITHHELD", plan)
+        @test occursin("all_or_nothing=true", plan)
         @test occursin("ASSIGNMENT ZEROED", checklist)
         @test occursin("unrun test groups", checklist)
 
@@ -201,16 +195,17 @@ end
         @test broken_reference.total_awarded == 0
         @test first(broken_reference.test_results).passed == 2
         @test occursin("reference implementation broken", broken_reference.failure_message)
-        @test all(r -> r.passed, filter(r -> r.kind == :marks, broken_reference.criterion_results))
+        marked = filter(r -> r.kind == :marks, broken_reference.criterion_results)
+        @test first(marked).passed
+        @test !last(marked).passed
         @test occursin("zero_on_failure=true", broken_reference.failure_message)
         @test occursin("Reference test answer, input 1", broken_reference.failure_message)
         @test occursin("Oracle declaration(s):", broken_reference.failure_message)
         default_reference = grade_submission(reference, submission; io=nothing)
-        @test default_reference.total_awarded == 1
+        @test default_reference.total_awarded == 3
         @test default_reference.failure_category == :reference_failure
-        @test startswith(default_reference.failure_message, "BEHAVIORAL MARKS WITHHELD:")
-        @test occursin("Reference test answer, input 1", default_reference.failure_message)
-        @test occursin("$(test_path):13", default_reference.failure_message)
+        @test !occursin("BEHAVIORAL MARKS WITHHELD", default_reference.failure_message)
+        @test last(filter(r -> r.kind == :marks, default_reference.criterion_results)).awarded == 1
 
         write(joinpath(reference, "test", "runtests.jl"), "using SkeletonizePackage, Test\n@test true\n@assignment_requirements begin\n @require exported(missing_name) marks=1 \"required interface\"\nend\n")
         property = grade_submission(reference, submission; io=nothing)
@@ -219,16 +214,16 @@ end
     end
 end
 
-@testset "zero total without a fatal rule" begin
+@testset "unrelated groups retain marks without a fatal rule" begin
     mktempdir() do tmp
         reference, submission = _write_grade_fixture!(tmp; passing=false)
         test_path = joinpath(reference, "test", "runtests.jl")
         write(test_path, first(split(read(test_path, String), "@assignment_requirements")))
         result = grade_submission(reference, submission; io=nothing)
-        @test result.total_awarded == 0
+        @test result.total_awarded == 1
         @test result.total_possible == 3
-        @test startswith(result.failure_message, "BEHAVIORAL MARKS WITHHELD:")
-        @test occursin("withholds all 3 behavioral marks", result.student_report)
+        @test !occursin("BEHAVIORAL MARKS WITHHELD", result.failure_message)
+        @test occursin("Total: 1 / 3 marks", result.student_report)
         @test !occursin("ASSIGNMENT ZEROED", result.student_report)
         @test isempty(result.property_results)
     end

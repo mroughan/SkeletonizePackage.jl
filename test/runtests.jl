@@ -231,7 +231,7 @@ assignment
     _, failing_submission = _write_grade_fixture!(tmp; submission_name="CliFailing", passing=false)
     code, out, _ = _capture_main(["grade", reference, failing_submission, "--student-id", "cli-fail"])
     @test code == 2
-    @test occursin("Total: 1 / 4 marks", out)
+    @test occursin("Total: 2 / 4 marks", out)
     @test !occursin("Status: failed", out)
 
     code, _, err = _capture_main(["grade", reference, passing_submission, "--csv-format"])
@@ -1026,10 +1026,10 @@ using Test
         csv_path=csv_path,
     )
     @test !isvalid(failing)
-    @test failing.total_awarded == 1
+    @test failing.total_awarded == 2
     @test failing.total_possible == 4
-    @test failing.csv_row == "\"student,2\",failed,0,1,1"
-    @test occursin("Total: 1 / 4 marks", failing.student_report)
+    @test failing.csv_row == "\"student,2\",failed,0,2,2"
+    @test occursin("Total: 2 / 4 marks", failing.student_report)
     @test !occursin("Status: failed", failing.student_report)
     @test length(failing.reference_test_results) == 1
     @test !only(failing.reference_test_results).passed
@@ -1188,6 +1188,7 @@ assignment
 end
 
 include("grading_diagnostics.jl")
+include("proportional_grading.jl")
 
 if get(ENV, "SKELETONIZE_RUN_QUALITY_TESTS", "false") == "true"
     include("aqua.jl")

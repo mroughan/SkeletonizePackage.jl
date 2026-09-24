@@ -15,7 +15,6 @@ using SkeletonizePackage
 
 result = grade_submission("ReferencePackage", "SubmissionPackage";
     student_id="s123",
-    zero_on_failure=true,
     report_path="s123-feedback.md",
     html_path="s123-feedback.html",
     gradescope_path="s123-results.json",
@@ -31,7 +30,7 @@ The equivalent CLI invocation is:
 ```bash
 julia --project -e 'using SkeletonizePackage; exit(SkeletonizePackage.main())' -- \
   grade ReferencePackage SubmissionPackage --student-id s123 \
-  --zero-on-failure --report s123-feedback.md --html s123-feedback.html \
+  --report s123-feedback.md --html s123-feedback.html \
   --gradescope s123-results.json --csv marks.csv
 ```
 
@@ -44,40 +43,61 @@ redirect these with `io=...` or disable them with `io=nothing`.
 
 | Policy | Ordinary `@marks` points | Property points |
 |:--|:--|:--|
-| Default | Require an overall passing behavioral run, including oracle comparisons, and a passing marked group | Awarded for passing properties independently of behavioral failures |
+| Default | Proportional credit within each group | Awarded for passing properties independently of behavioral failures |
+| `@marks ... all_or_nothing=true` | Only that group requires every evaluated check to pass | Unchanged |
 | `zero_on_failure=true` | All withheld after a behavioral failure | Also withheld after a behavioral failure |
 | Failed `zero_marks=true` property gate | All withheld | All withheld |
 
 Passing groups remain visible even with a total of zero. In `criterion_results`,
 `passed` records the observed outcome and `awarded` records the score; do not
-infer one from the other. Per-group reporting does **not** enable partial credit.
-A group with no evaluated assertions, including a skipped-only group, receives
-no behavioral marks. `@reference_test` is metadata evaluated separately; it does
-not count as an assertion inside its group or award points itself. Place
-meaningful `@test` assertions alongside marked reference comparisons.
+infer one from the other. A criterion with some unsuccessful checks can still
+earn partial credit. A group with no evaluated assertions or oracle comparisons
+receives zero; skipped/broken checks are excluded.
 
 `zero_on_failure` is a grading keyword or CLI flag, not an INC generation
 configuration setting. Record the chosen policy in the grading plan and
 communicate it to students before assessment.
 
-### Default Withholding Notice
+### Group Scoring
 
-The default whole-run policy can withhold marks for a group even when every
-check in that group meets expectations. A different assertion, an oracle
-comparison, or an execution problem can prevent the behavioral run from meeting
-all expectations. No `zero_marks=true` requirement needs to be triggered.
+The default formula is `points * successful_checks / evaluated_checks`. Each
+ordinary assertion and each generated oracle comparison attributable to the
+group counts equally. Assertion errors count as unsuccessful checks. Nested
+ordinary testsets contribute to the enclosing group. For example, 7 successful
+checks out of 8 in an 8-mark group earn 7 marks, not zero. A 3-mark group with
+one of two successful checks earns 1.5 marks. Fractional credit is not rounded
+to whole marks; awarded fields and category/assignment totals use `Float64`.
 
-Reports and brief summaries flag this as **BEHAVIORAL MARKS WITHHELD**, identify
-the triggering checks and available locations, and state that property checks
-remain independently scored. Passing criteria point to that notice instead of
-an unexplained "overall scoring policy." The notice does not itself indicate
-forbidden code. It also appears when behavioral withholding leaves a total of
-zero but no whole-assignment zero policy was triggered.
+To require all checks in one group to pass, declare the exception explicitly:
 
-`zero_on_failure=false` is already the default; it does not enable per-group
-credit. It only prevents behavioral issues from additionally withholding
-property points. Changing this scoring policy is separate from improving the
-report explanation.
+```julia
+@hidden_test begin
+    @marks 8 "essential checks" all_or_nothing=true
+    @test f(1) == 1
+    @test f(2) == 2
+end
+```
+
+The flag zeros this group only. A **GROUP MARKS ZEROED** notice at the top of
+reports and in the brief summary names the rule, its declaration file/line, and
+an available failing check. An executed flag applies to every
+criterion in the same recorded group; prefer one `@marks` criterion per block.
+The default is `all_or_nothing=false`.
+
+Oracle declarations are matched to recorded groups by file/line, not function
+name. Each generated input contributes one check; an oracle-only group can earn
+credit. Oracle metadata outside marked groups is diagnostic only. It can still
+affect overall validity and an explicitly selected whole-assignment zero policy.
+
+Interrupted groups receive zero pending review: an exception outside an
+assertion, process exit, timeout, or oracle setup/generator error leaves the
+remaining check count unknown. Completed independent groups retain credit.
+An exception inside an assertion counts as one unsuccessful check instead.
+This distinguishes unknown work from checks that actually ran and did not pass.
+
+The previous default `BEHAVIORAL MARKS WITHHELD` policy is removed. To keep a
+group atomic, add the flag above. To zero the entire assignment after any
+behavioral failure, explicitly use `zero_on_failure=true` (`--zero-on-failure`).
 
 ### Whole-Assignment Zero Notice
 
@@ -118,8 +138,9 @@ Julia's usual testset behavior.
 
 `result.test_results` contains a root summary followed by recorded groups. Each
 entry has `name`, `status`, `passed`, `failed`, `errored`, `broken`, `details`, and
-`marks` (executed rubric source locations). Counts include descendants, so do
-not sum the root and group counts together.
+`marks` (executed rubric source locations), `references` (executed oracle
+declaration locations), and `aborted` (interruption, including descendants).
+Counts include descendants, so do not sum the root and group counts together.
 
 | Status | Meaning |
 |:--|:--|
@@ -132,6 +153,8 @@ not sum the root and group counts together.
 Unreached rubric criteria appear in `criterion_results`, even when no group was
 created for them. `broken` counts expected-broken and skipped assertions. An
 errored or incomplete group can have both completed and unexecuted assertions.
+These counts describe ordinary assertions, not oracle comparisons. An oracle-only
+group can have assertion status `:not_run` while its criterion earns full credit.
 
 ## Diagnose a Failure
 
@@ -192,7 +215,9 @@ Checks: 62 of 63 evaluated checks met expectations; 1 did not meet expectations;
 ```
 
 The evaluated-check denominator includes matching and nonmatching assertions;
-exceptions and skipped/expected-broken checks are listed separately. Interrupted
+exceptions and skipped/expected-broken checks are listed separately. This display
+denominator differs from scoring, which also counts assertion errors and generated
+oracle comparisons as evaluated checks. Interrupted
 or unevaluated groups are explicitly described as such. Criterion feedback
 explains awarded marks and any scoring policy that withheld points. The
 whole-assignment zero notice and its source locations remain prominent.
@@ -200,8 +225,8 @@ whole-assignment zero notice and its source locations remain prominent.
 Technical categories, process exit codes, and the original Julia test output
 remain in Test Output for examiner review; the HTML report does not add a
 failure-category banner. Structured result statuses, CSV status values, CLI
-exit codes, and Gradescope status fields retain their existing meanings. These
-presentation changes do not change the mark or introduce partial credit.
+exit codes, and Gradescope status fields retain their existing meanings, even
+when a result earns partial credit. Awarded score fields can contain decimals.
 
 Markdown, self-contained HTML, Gradescope JSON, and CSV are available on the
 result even without output paths. Markdown and HTML contain group outcomes

@@ -371,7 +371,7 @@ function _validate_file!(issues, counts, rel, path)
             end
         elseif startswith(stripped, "@marks")
             _parse_marks_line(stripped) === nothing &&
-                _push_issue!(issues, :error, rel, line_number, "unsupported @marks syntax: $stripped", "Use `@marks POINTS \"student-facing description\"`, optionally with `id=\"stable-id\"`.")
+                _push_issue!(issues, :error, rel, line_number, "unsupported @marks syntax: $stripped", "Use `@marks POINTS \"student-facing description\"`, optionally with `id=\"stable-id\"` and `all_or_nothing=true`.")
         elseif startswith(stripped, "@require") || startswith(stripped, "@forbid")
             _parse_property_line(stripped) === nothing &&
                 _push_issue!(issues, :error, rel, line_number, "unsupported requirement syntax: $stripped", "Use `@require property(...)`, optionally followed by `marks=N`, `zero_marks=true`, `id=\"stable-id\"`, and a description string.")

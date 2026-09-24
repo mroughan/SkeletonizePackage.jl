@@ -10,8 +10,17 @@
   unchanged as `JULIA-LICENSE.md` (retrieved 2026-09-24).
   Public rendered documentation: https://docs.julialang.org/en/v1.12/stdlib/Test/.
 
-The archived documentation supports the test-runner design. The choice to retain
-whole-run zero scoring while exposing independent test outcomes comes from the
-examiner's requested grading policy, not from Julia's default scoring semantics.
+- **Julia Test implementation, v1.12.6** (`julia-test-v1.12.6.jl`). Raw source:
+  https://raw.githubusercontent.com/JuliaLang/julia/v1.12.6/stdlib/Test/src/Test.jl.
+  Retrieved 2026-09-24, preserved unchanged, covered by the archived MIT license.
+  Its `Test.Error.test_type == :nontest_error` distinguishes an exception outside
+  an assertion from an assertion-contained exception. This supports treating an
+  interrupted group's denominator as unknown instead of awarding misleading credit.
+
+The archived documentation supports the test-runner design. The examiner's
+2026-09-24 request defines the scoring policy: proportional credit within each
+group by default, with an explicit all-or-nothing group flag. Equal check weighting,
+excluding skipped/broken assertions, and retaining explicit whole-assignment gates
+implement that contract; Julia's Test library does not prescribe grading policy.
 
 No referenced implementation documents remain to be downloaded.

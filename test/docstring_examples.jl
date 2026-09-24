@@ -17,6 +17,7 @@
         end) == 11
 
         @test (@marks 1 "sorts a two-element vector" id="sort-basic") === nothing
+        @test (@marks 8 "essential checks" all_or_nothing=true) === nothing
         @test (@assignment_requirements begin
             @require exported(mysort) marks=1 id="interface-export" "exports the required function"
             @require signature(mysort, 1)
@@ -143,7 +144,8 @@ assignment
             @test occursin("hidden-test details", checklist)
             @test occursin("outcomes separately from awarded marks", instructions)
             @test occursin("Local `Pkg.test()`", instructions)
-            @test occursin("does not imply partial credit", rubric)
+            @test occursin("proportional", rubric)
+            @test occursin("all_or_nothing=true", rubric)
             @test occursin("without hiding passing", rubric)
             @test occursin("reports outcomes separately", read(joinpath(skeleton, "README.md"), String))
         end

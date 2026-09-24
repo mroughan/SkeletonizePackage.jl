@@ -7,9 +7,30 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+### Changed (proportional group scoring)
+
+- Breaking scoring change: each marked group now earns credit proportional to
+  successful checks. Unrelated groups retain their marks after a failed check;
+  the previous default global behavioral withholding policy is removed.
+- `@marks ... all_or_nothing=true` explicitly requires all checks in that group
+  to pass. Whole-assignment `zero_on_failure=true` and fatal property gates remain
+  opt-in and preserve observed outcomes.
+- Explicit group-zero rules produce a prominent `GROUP MARKS ZEROED` notice in
+  reports and brief summaries, identifying rule and available assertion locations.
+- Assertions and generated oracle comparisons in a recorded group have equal
+  weight. Oracle ownership uses declaration file/line, including oracle-only
+  groups. Assertion errors count as unsuccessful; skipped/broken checks are excluded.
+- Interrupted groups receive zero pending review because unrun check counts are
+  unknown. Completed independent groups retain credit after process interruptions.
+- Awarded criterion/category/assignment scores now use `Float64`, preserving
+  fractional credit in Markdown, HTML, CSV, and Gradescope JSON. Possible points
+  remain integers; legacy result constructors remain available.
+- Updated API docs, generated assignment guidance, README, architecture, and the
+  documentation site. Added regression coverage and mirrored docstring examples.
+
 ### Fixed (default withholding explanation)
 
-- Default whole-run behavioral withholding now has a prominent
+- Before the proportional-scoring change above, default whole-run withholding gained a
   `BEHAVIORAL MARKS WITHHELD` notice, identifying the triggering checks and
   locations in reports and brief summaries even when no fatal rule applies.
 - Passing criteria link their withheld marks to that notice. Property points,

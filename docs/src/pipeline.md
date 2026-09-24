@@ -221,9 +221,10 @@ result.csv_row
 
 The grading harness summarizes marks by rubric visibility, such as `public` and
 `hidden`, and totals them at the end of the CSV row. Property and reference-test
-criteria are evaluated separately. Ordinary behavioral `@marks` points still
-require an overall passing behavioral run, but each group's actual outcome is
-reported separately. Failed assertions no longer prevent later tests from
+criteria are evaluated separately. Ordinary `@marks` points are proportional to
+successful checks within each group, including generated oracle comparisons.
+An explicit `all_or_nothing=true` flag on `@marks` requires every check in that
+group to pass without affecting unrelated groups. Failed assertions do not prevent later tests from
 running. Keep independent behaviors in separate annotated blocks so an exception
 in one group's setup does not prevent the others from running.
 

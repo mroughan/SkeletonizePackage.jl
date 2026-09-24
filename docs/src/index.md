@@ -9,6 +9,11 @@ keeps generated packages as ordinary Julia packages, and validates reference
 packages before generation so syntax and teaching-design problems are caught
 early.
 
+Grading awards proportional credit within each marked group by default, including
+generated reference comparisons. Use `@marks ... all_or_nothing=true` only when
+all checks in one group must pass. Whole-assignment zero policies remain explicit;
+see [Grading and Diagnostics](grading.md) for scoring and report examples.
+
 ## Quick Start
 
 To start a fresh assignment, scaffold a teacher reference package:

@@ -97,8 +97,9 @@ After students submit completed packages, use `grade_submission(...)` or the
 `grade` command to run the teacher's tests against the submission, source-property
 checks, and reference-oracle checks. Failed assertions do not stop later tests.
 Reports distinguish actual outcomes from awarded marks, so a zero score can
-still show successful work. `zero_on_failure=true` also withholds property points
-after a behavioral failure; default scoring withholds ordinary behavioral points.
+still show successful work. Each group earns proportional credit by default;
+`@marks ... all_or_nothing=true` requires every check in that group to pass.
+`zero_on_failure=true` explicitly zeros the whole assignment after a behavioral failure.
 
 Outputs include Markdown, HTML, Gradescope JSON, and a CSV marks row. Structured
 results include per-criterion `CriterionResult` values and per-group

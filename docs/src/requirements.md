@@ -153,6 +153,10 @@ end
 When `grade_submission` runs, the student feedback report includes a
 `Reference Tests` section with one entry for each generated input.
 The oracle annotation is metadata, not a Julia assertion or an independent
-points award. A marked group needs evaluated assertions to earn behavioral
-points, and all oracle comparisons must pass for the overall behavioral run
-to pass. A group containing only `@marks` and `@reference_test` earns no points.
+points allocation. Each generated comparison counts as one check toward its
+recorded group's proportional score, alongside ordinary assertions. A group
+containing only `@marks` and `@reference_test` can earn credit. Comparisons are
+associated by declaration file and line, so separate annotations for the same
+function do not share outcomes. `@marks ... all_or_nothing=true` requires all
+of that group's checks to pass. All oracle comparisons must still pass for the
+overall behavioral run to pass, independently of partial credit.

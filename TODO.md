@@ -35,16 +35,14 @@
 - Strip annotated cells rather than annotated lines, matching Pluto's cell model.
 - Add validation rules specific to Pluto package structure.
 
-## Partial Credit
+## Custom Scoring
 
-Per-group outcomes and continuation after failed assertions are implemented.
-These items concern future scoring policies: ordinary behavioral marks still
-require an overall passing run, and `zero_on_failure` can zero property points
-without hiding passing outcomes.
+Proportional group credit, fractional scores, generated-input oracle credit,
+and explicit `all_or_nothing=true` group rules are implemented. Whole-assignment
+zero policies remain explicit and preserve observed outcomes.
 
-- Extend `@marks` to accept `partial=true` and a `partial_scorer` function.
-- Allow reference tests to award fractional marks when a subset of generated inputs match.
-- Store `partial_awarded::Float64` alongside `awarded::Int` in `CriterionResult`.
+- Consider weighted assertions or a teacher-defined scorer for criteria that
+  need more than equal weighting of successful checks.
 
 ## Batch Submission Grading
 

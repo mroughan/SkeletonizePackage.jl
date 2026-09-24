@@ -101,7 +101,7 @@ macro hidden_test(block)
 end
 
 """
-    @marks points "description" [id="stable-id"]
+    @marks points "description" [id="stable-id"] [all_or_nothing=false]
 
 Attach rubric metadata to nearby tests. The macro is a runtime no-op so teacher
 and generated student tests can execute normally, while `generate_skeleton_package`
@@ -112,9 +112,14 @@ student or hidden test block also names its generated `@testset`. Prefer one
 coherent marked criterion per block.
 
 During grading, the runner records the reached source location to associate the
-criterion with its group. Behavioral points require both a passing group and an
-overall passing behavioral run. A passing outcome can therefore receive zero
-points. Empty and skipped-only groups earn no behavioral points.
+criterion with its group. By default, credit is proportional: points times
+successful checks divided by evaluated checks. Each ordinary assertion and each
+generated reference comparison in the group has equal weight. Assertion errors
+count as unsuccessful; skipped/broken checks are excluded. Empty groups earn zero.
+Set `all_or_nothing=true` to require every evaluated check in that group to pass.
+An executed flag applies to every criterion in the same group. Unrelated groups
+retain their credit unless an explicit whole-assignment zero policy applies.
+Interrupted groups receive zero pending review because their denominator is unknown.
 
 # Example
 
@@ -123,6 +128,12 @@ points. Empty and skipped-only groups earn no behavioral points.
     @marks 1 "sorts a two-element vector" id="sort-basic"
     @test mysort([2, 1]) == [1, 2]
 end
+```
+
+An explicitly all-or-nothing criterion uses the same no-op macro:
+
+```julia
+julia> @marks 8 "essential checks" all_or_nothing=true
 ```
 
 Generated rubric entry:
@@ -233,10 +244,12 @@ runtime in ordinary tests this macro is a no-op. During grading,
 in both the reference package and the submission package, then compares their
 outputs.
 
-This annotation does not itself award points or count as a Julia assertion.
-If its block has `@marks`, include meaningful ordinary assertions too: a group
-without evaluated assertions earns no behavioral points. Oracle results are
-reported separately and must pass for an overall passing behavioral run.
+This annotation does not itself allocate points or count as a Julia assertion.
+Each generated comparison contributes one equally weighted check to its recorded
+group's `@marks` criteria, even in an oracle-only group. Declaration file and line
+identify ownership, so separate annotations for the same function stay separate.
+Comparisons outside marked groups remain diagnostic only. Oracle results are
+also reported separately and must pass for an overall passing behavioral run.
 
 # Example
 

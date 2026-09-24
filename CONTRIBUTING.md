@@ -74,8 +74,10 @@ Do not silently regenerate existing student submissions when updating templates.
 Mirror docstring examples in `test/docstring_examples.jl`; cover generated
 instructions and rubric text in package tests. `test/grading_diagnostics.jl`
 checks continued execution, outcome/score separation, missing dependencies,
-interrupted runs, and report exports. Run it through the main test suite, which
-provides its fixtures. Preserve the downloaded upstream sources under
+interrupted runs, and report exports. `test/proportional_grading.jl` checks
+fractional group credit, explicit all-or-nothing rules, oracle ownership, and
+interrupted-group scoring. Run these through the main test suite, which provides
+their fixtures. Preserve the downloaded upstream sources under
 `references/grading/`; their README records provenance and licensing.
 
 ## Contribution Guidelines
