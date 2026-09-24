@@ -60,6 +60,25 @@ meaningful `@test` assertions alongside marked reference comparisons.
 configuration setting. Record the chosen policy in the grading plan and
 communicate it to students before assessment.
 
+### Default Withholding Notice
+
+The default whole-run policy can withhold marks for a group even when every
+check in that group meets expectations. A different assertion, an oracle
+comparison, or an execution problem can prevent the behavioral run from meeting
+all expectations. No `zero_marks=true` requirement needs to be triggered.
+
+Reports and brief summaries flag this as **BEHAVIORAL MARKS WITHHELD**, identify
+the triggering checks and available locations, and state that property checks
+remain independently scored. Passing criteria point to that notice instead of
+an unexplained "overall scoring policy." The notice does not itself indicate
+forbidden code. It also appears when behavioral withholding leaves a total of
+zero but no whole-assignment zero policy was triggered.
+
+`zero_on_failure=false` is already the default; it does not enable per-group
+credit. It only prevents behavioral issues from additionally withholding
+property points. Changing this scoring policy is separate from improving the
+report explanation.
+
 ### Whole-Assignment Zero Notice
 
 A triggered `zero_marks=true` gate or `zero_on_failure=true` policy produces an
@@ -164,6 +183,25 @@ Invalid paths or option values can raise `ArgumentError`; report-file write
 errors can also propagate rather than returning a `GradeResult`.
 
 ## Reports and Exports
+
+Student-facing Markdown and HTML lead with the mark and the observed counts,
+not a blanket pass/fail verdict on the assignment or its test groups. For example:
+
+```text
+Checks: 62 of 63 evaluated checks met expectations; 1 did not meet expectations; 0 evaluation errors; 0 skipped/expected-broken.
+```
+
+The evaluated-check denominator includes matching and nonmatching assertions;
+exceptions and skipped/expected-broken checks are listed separately. Interrupted
+or unevaluated groups are explicitly described as such. Criterion feedback
+explains awarded marks and any scoring policy that withheld points. The
+whole-assignment zero notice and its source locations remain prominent.
+
+Technical categories, process exit codes, and the original Julia test output
+remain in Test Output for examiner review; the HTML report does not add a
+failure-category banner. Structured result statuses, CSV status values, CLI
+exit codes, and Gradescope status fields retain their existing meanings. These
+presentation changes do not change the mark or introduce partial credit.
 
 Markdown, self-contained HTML, Gradescope JSON, and CSV are available on the
 result even without output paths. Markdown and HTML contain group outcomes

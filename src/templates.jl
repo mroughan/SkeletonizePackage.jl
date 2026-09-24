@@ -466,6 +466,7 @@ function write_grading_plan(reference_path::AbstractString; plan_path::AbstractS
     println(io, "Grading reports test outcomes independently of marks and continues after failed assertions.")
     println(io, "Use `zero_on_failure=true` to zero the entire assignment after a behavioral failure while retaining those outcomes.")
     println(io, "An ASSIGNMENT ZEROED notice names the triggering checks and available source locations at the top of reports and in the brief diagnostic.")
+    println(io, "BEHAVIORAL MARKS WITHHELD identifies the default whole-run policy separately: a check elsewhere can withhold marks for a passing group without a fatal rule or forbidden-code finding.")
     println(io, "Review dependency/loading diagnostics before finalizing marks; an environment failure is not proof of an incorrect answer.")
     println(io, "The grader does not install dependencies. Preserve submissions before repairing environments.")
     println(io, "Review reports for private test expressions and inputs before sharing them with students.")

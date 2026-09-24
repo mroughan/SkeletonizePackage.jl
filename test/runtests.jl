@@ -231,7 +231,8 @@ assignment
     _, failing_submission = _write_grade_fixture!(tmp; submission_name="CliFailing", passing=false)
     code, out, _ = _capture_main(["grade", reference, failing_submission, "--student-id", "cli-fail"])
     @test code == 2
-    @test occursin("Status: failed", out)
+    @test occursin("Total: 1 / 4 marks", out)
+    @test !occursin("Status: failed", out)
 
     code, _, err = _capture_main(["grade", reference, passing_submission, "--csv-format"])
     @test code == 1
@@ -989,7 +990,7 @@ end
     @test passing.csv_header == "student_id,status,hidden,public,total"
     @test passing.csv_row == "student-1,passed,2,2,4"
     @test occursin("answer returns forty-two: 2 / 2 marks", passing.student_report)
-    @test occursin("passed: exports answer", passing.student_report)
+    @test occursin("satisfied: exports answer", passing.student_report)
     @test occursin("does not import DataFrames", passing.student_report)
     @test length(passing.reference_test_results) == 1
     @test only(passing.reference_test_results).passed
@@ -1028,7 +1029,8 @@ using Test
     @test failing.total_awarded == 1
     @test failing.total_possible == 4
     @test failing.csv_row == "\"student,2\",failed,0,1,1"
-    @test occursin("Status: failed", failing.student_report)
+    @test occursin("Total: 1 / 4 marks", failing.student_report)
+    @test !occursin("Status: failed", failing.student_report)
     @test length(failing.reference_test_results) == 1
     @test !only(failing.reference_test_results).passed
     @test occursin("expected 42, got 0", failing.student_report)
@@ -1039,7 +1041,7 @@ using Test
     @test !isvalid(forbidden)
     @test forbidden.total_awarded == 0
     @test forbidden.total_possible == 4
-    @test occursin("Zeroes assignment if failed", forbidden.student_report)
+    @test occursin("Whole-assignment zero policy applies", forbidden.student_report)
 
     cli_report = joinpath(tmp, "cli-feedback.md")
     cli_csv = joinpath(tmp, "cli-marks.csv")

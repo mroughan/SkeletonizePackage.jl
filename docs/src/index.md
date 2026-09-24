@@ -246,7 +246,7 @@ outputs. A passing report contains entries like:
 ```text
 ## Reference Tests
 
-- [hidden] `clamp01` input 1 passed: matched reference output
+- [hidden] `clamp01` input 1 matched: matched reference output
 ```
 
 ## Example 5 - Structural and Shortcut Policies

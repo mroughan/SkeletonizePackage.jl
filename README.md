@@ -306,6 +306,13 @@ submission do not affect automarking. The returned `GradeResult` includes:
   property failures (`:property_failure`), `:timeout`, `:zero_gate`, and `:none`.
 - `timed_out`: `true` when the submission test process was killed by the timeout.
 
+Student reports lead with the awarded mark and counts such as "62 of 63
+evaluated checks met expectations," not an overall assignment or group
+"failed" label. Errors and skipped checks are reported separately, with reasons
+and source locations where available. Detailed technical diagnostics remain in
+Test Output. Machine-readable statuses, CSV values, and grading policies are
+unchanged; clearer feedback does not imply partial credit.
+
 ### Keyword options
 
 | Keyword | Default | Description |
@@ -333,11 +340,18 @@ failure. Fatal `zero_marks=true` requirements also zero the entire assignment.
 Neither policy hides what passed: `CriterionResult.passed` describes the test
 outcome, while `awarded` describes the score.
 
+The default policy is reported separately as **BEHAVIORAL MARKS WITHHELD**, with
+the triggering checks and locations. This explains why a group can meet every
+expectation yet receive zero points when another group does not. It is not a
+fatal-rule notice: property points remain independently available, and no
+forbidden-code finding is implied. Setting `zero_on_failure=false` does not
+enable per-group scoring; it only leaves property points independent.
+
 When either whole-assignment zero policy fires, the report begins with
 **ASSIGNMENT ZEROED**, naming the triggering checks and available file/line
 locations. Fatal properties show the reference rule's declaration location;
 assertion failures show Julia's recorded test location. The brief diagnostic,
-HTML banner, and Gradescope summary repeat the warning. All zeroing causes are
+HTML report, and Gradescope summary repeat the warning. All zeroing causes are
 listed in the report; the brief summary shows up to three and flags any others.
 The underlying failure category is retained, including environment errors.
 

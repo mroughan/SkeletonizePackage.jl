@@ -64,6 +64,8 @@ Result returned by [`grade_submission`](@ref).
 Fields:
 - `passed`, `exitcode`, `stdout`, `stderr` — overall pass/fail and process output.
 - `student_id`, `student_report`, `html_report` — per-student feedback in Markdown and HTML.
+  Student feedback leads with marks and check counts rather than an overall
+  pass/fail label; technical diagnostics remain in the Test Output section.
 - `csv_header`, `csv_row` — one-row CSV mark summary (`:default` format).
 - `gradescope_json` — Gradescope autograder JSON (always populated; write via `gradescope_path`).
 - `rubric_items`, `criterion_results`, `property_results`, `reference_test_results` — structured results.
@@ -79,7 +81,8 @@ Fields:
   `:property_failure`, `:timeout`, or `:zero_gate`.
 - `failure_message` — human-readable explanation of the failure category; starts
   with `ASSIGNMENT ZEROED` and the triggering checks when a whole-assignment
-  zero policy applies. The category still identifies the underlying failure.
+  zero policy applies, or `BEHAVIORAL MARKS WITHHELD` for the default whole-run
+  policy. The category still identifies the underlying failure.
 
 # Example
 
@@ -168,6 +171,9 @@ to zero the entire assignment without hiding successful test outcomes.
 When a whole-assignment zero policy is triggered, reports and brief diagnostics
 begin with `ASSIGNMENT ZEROED`, identify the triggering checks, and show recorded
 assertion locations or the reference file/line declaring a fatal rule.
+Default whole-run withholding is separately flagged as `BEHAVIORAL MARKS WITHHELD`,
+with its triggering checks, even when no fatal requirement applies and property
+points are still awarded.
 
 # Keywords
 
@@ -299,13 +305,21 @@ function grade_submission(
         zero_reasons = _zero_mark_reasons(rubric, criterion_results, test_results, reference_results, reference_specs;
             reference_path=abspath(reference_path), zero_on_failure=zero_on_failure,
             behavioral_passed=behavioral_passed, failure_message=cat_message)
-        if !isempty(zero_reasons)
-            summary = join(first(zero_reasons, 3), " | ")
-            length(zero_reasons) > 3 && (summary *= " | $(length(zero_reasons) - 3) more zeroing causes; see report.")
-            cat_message = "ASSIGNMENT ZEROED: all $total_possible marks withheld. " * summary * " Original diagnostic: " * cat_message
+        behavioral_points = sum(item.points for item in rubric if item.kind == :marks; init=0)
+        withheld_reasons = !zeroed && !behavioral_passed && behavioral_points > 0 ?
+            _behavioral_policy_reasons(test_results, reference_results, reference_specs, abspath(reference_path), cat_message) : String[]
+        policy_reasons = isempty(zero_reasons) ? withheld_reasons : zero_reasons
+        if !isempty(policy_reasons)
+            summary = join(first(policy_reasons, 3), " | ")
+            cause_kind = isempty(zero_reasons) ? "withholding" : "zeroing"
+            length(policy_reasons) > 3 && (summary *= " | $(length(policy_reasons) - 3) more $cause_kind causes; see report.")
+            notice = isempty(zero_reasons) ?
+                "BEHAVIORAL MARKS WITHHELD: $behavioral_points behavioral marks withheld by the default whole-run policy. Property checks are scored separately; no fatal zero-mark rule was triggered. " :
+                "ASSIGNMENT ZEROED: all $total_possible marks withheld. "
+            cat_message = notice * summary * " Original diagnostic: " * cat_message
         end
         report = _student_grade_report(String(student_id), passed, exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, category, cat_message, stdout_text, stderr_text;
-            test_results=test_results, zero_reasons=zero_reasons)
+            test_results=test_results, zero_reasons=zero_reasons, withheld_reasons=withheld_reasons)
         html = _build_html_report(report, category, cat_message)
         gsj = _build_gradescope_json(String(student_id), criterion_results, total_awarded, total_possible;
             summary=string(category, ": ", cat_message))
@@ -337,7 +351,10 @@ function grade_submission(
 end
 
 function _brief_failure_detail(detail::AbstractString)
-    lines = filter(!isempty, strip.(split(detail, '\n')))
+    lines = String[String(strip(line)) for line in split(detail, '\n') if !isempty(strip(line))]
+    if !isempty(lines) && startswith(first(lines), "Test Failed at ")
+        lines[1] = replace(first(lines), "Test Failed at " => "Check did not meet expectations at "; count=1)
+    end
     return join(first(lines, 3), " ")
 end
 
@@ -350,33 +367,39 @@ function _zero_mark_reasons(rubric::Vector{RubricItem}, criteria::Vector{Criteri
     for (item, result) in zip(rubric, criteria)
         _is_property_criterion(item.kind) && item.zero_marks && !result.passed || continue
         location = string(joinpath(reference_path, item.path), ":", item.line)
-        push!(reasons, "zero_marks=true: fatal check [$(item.id)] $(item.description) did not pass. " *
+        push!(reasons, "zero_marks=true: scoring rule [$(item.id)] $(item.description) was not satisfied or could not be evaluated. " *
             "Rule declared at $location. $(result.message)")
     end
     if zero_on_failure && !behavioral_passed
-        behavioral_reasons = String[]
-        if !isempty(tests)
-            # Details are repeated in ancestor summaries; attribute each to its deepest group.
-            for detail in unique(first(tests).details::Vector{String})
-                index = findlast(t -> detail in t.details, tests)
-                group = index === nothing ? first(tests).name : tests[index].name
-                push!(behavioral_reasons, "Test group \"$group\": " * _brief_failure_detail(detail))
-            end
-        end
-        for result in references
-            result.passed && continue
-            declarations = String[string(joinpath(reference_path, spec.path), ":", spec.line)
-                for spec in specs if spec.function_name == result.function_name && spec.visibility == result.visibility]
-            location = isempty(declarations) ? "Declaration location unavailable." :
-                "Oracle declaration(s): " * join(unique(declarations), ", ") * "."
-            push!(behavioral_reasons, "Reference test $(result.function_name), input $(result.index) ($(result.input)): " *
-                _brief_failure_detail(result.message) * " $location")
-        end
-        if isempty(behavioral_reasons)
-            push!(behavioral_reasons, "$failure_message No failed assertion location was recorded; " *
-                "execution may be incomplete or no assertions were evaluated.")
-        end
+        behavioral_reasons = _behavioral_policy_reasons(tests, references, specs, reference_path, failure_message)
         append!(reasons, ("zero_on_failure=true: " * reason for reason in behavioral_reasons))
+    end
+    return reasons
+end
+
+function _behavioral_policy_reasons(tests::Vector{NamedTuple}, references::Vector{ReferenceTestResult},
+    specs::Vector{ReferenceTestSpec}, reference_path::AbstractString, failure_message::AbstractString)
+    reasons = String[]
+    if !isempty(tests)
+        # Details are repeated in ancestor summaries; attribute each to its deepest group.
+        for detail in unique(first(tests).details::Vector{String})
+            index = findlast(t -> detail in t.details, tests)
+            group = index === nothing ? first(tests).name : tests[index].name
+            push!(reasons, "Test group \"$group\": " * _brief_failure_detail(detail))
+        end
+    end
+    for result in references
+        result.passed && continue
+        declarations = String[string(joinpath(reference_path, spec.path), ":", spec.line)
+            for spec in specs if spec.function_name == result.function_name && spec.visibility == result.visibility]
+        location = isempty(declarations) ? "Declaration location unavailable." :
+            "Oracle declaration(s): " * join(unique(declarations), ", ") * "."
+        push!(reasons, "Reference test $(result.function_name), input $(result.index) ($(result.input)): " *
+            _brief_failure_detail(result.message) * " $location")
+    end
+    if isempty(reasons)
+        push!(reasons, "$failure_message No failed assertion location was recorded; " *
+            "execution may be incomplete or no assertions were evaluated.")
     end
     return reasons
 end
@@ -410,7 +433,7 @@ function _run_property_checks(submission_path::AbstractString, rubric::Vector{Ru
         try
             holds = _property_holds(project, Main, item.spec)
             passed = item.kind == :require ? holds : !holds
-            message = passed ? "property satisfied" : "property failed"
+            message = passed ? "property satisfied" : "property not satisfied"
             push!(results, PropertyCheckResult(item.kind, item.visibility, item.points, item.description, item.zero_marks, passed, message))
         catch err
             push!(results, PropertyCheckResult(item.kind, item.visibility, item.points, item.description, item.zero_marks, false, sprint(showerror, err)))
@@ -610,16 +633,17 @@ function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector
         if item.kind == :marks
             passed = behavioral_passed && !zeroed
             awarded = passed ? item.points : 0
-            message = zeroed ? "assignment zeroed by a gating requirement" : passed ? "behavioural tests passed" : "behavioural tests failed"
+            message = zeroed ? "marks withheld by the overall scoring policy" : passed ? "behavioral checks met expectations" : "behavioral checks did not all meet expectations"
             if test_results !== nothing
                 key = string(joinpath(reference_path, item.path), ":", item.line)
                 related = filter(r -> key in r.marks, test_results)
                 passed = !isempty(related) && all(r -> r.status == :passed, related)
                 passed || (awarded = 0)
                 message = isempty(related) ? "not run: criterion was not reached" :
-                    join(String["$(r.status): $(r.passed) passed, $(r.failed) failed, $(r.errored) errors, $(r.broken) broken/skipped" for r in related], "; ")
+                    join(String[rstrip(_student_test_summary(r), '.') for r in related], "; ")
                 if passed && awarded == 0 && item.points > 0
-                    message *= "; marks withheld by the overall scoring policy"
+                    message *= zeroed ? "; marks withheld by the whole-assignment zero policy; see ASSIGNMENT ZEROED" :
+                        "; marks withheld by the default whole-run behavioral policy; see BEHAVIORAL MARKS WITHHELD for the triggering checks"
                 end
             end
             push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, awarded, item.description, passed, message, item.zero_marks))
@@ -636,7 +660,7 @@ function _criterion_results(rubric::Vector{RubricItem}, property_results::Vector
                        if r.visibility == item.visibility &&
                           (fn === nothing || r.function_name == fn)]
             passed = !isempty(related) && all(result -> result.passed, related)
-            message = isempty(related) ? "reference test metadata only" : passed ? "all generated inputs matched" : "one or more generated inputs failed"
+            message = isempty(related) ? "reference test metadata only" : passed ? "all generated inputs matched" : "some generated inputs did not match or could not be evaluated"
             push!(results, CriterionResult(item.id, item.kind, item.visibility, item.points, 0, item.description, passed, message, item.zero_marks))
         end
     end
@@ -654,10 +678,40 @@ function _awarded_points_by_category(rubric::Vector{RubricItem}, criterion_resul
     return awarded
 end
 
+function _student_test_summary(result::NamedTuple)
+    evaluated = (result.passed::Int) + (result.failed::Int)
+    summary = "$(result.passed) of $evaluated evaluated checks met expectations; " *
+        "$(result.failed) did not meet expectations; $(result.errored) evaluation error$(result.errored == 1 ? "" : "s"); " *
+        "$(result.broken) skipped/expected-broken."
+    if result.status == :incomplete
+        summary *= " Execution was interrupted; remaining checks may not have run."
+    elseif result.status == :error
+        summary *= " An exception may have prevented additional checks from running."
+    elseif result.status == :not_run
+        summary *= " No checks were evaluated."
+    end
+    return summary
+end
+
+function _student_grading_note(category::Symbol)
+    category == :test_failure && return "Some checks did not match the expected results. The counts and details below show which expectations were met."
+    category == :test_error && return "Some checks could not be completed because an exception occurred. Completed checks are reported below."
+    category in (:environment_failure, :load_failure) && return "Some checks could not run because of a dependency or code-loading issue. This needs review before the mark is finalized."
+    category in (:execution_failure, :timeout) && return "Grading could not evaluate all checks. Recorded results are retained; the execution issue needs review."
+    category == :reference_failure && return "A reference comparison could not be completed. The teacher's reference implementation or its environment needs review."
+    category == :property_failure && return "Some source-code requirements were not satisfied or could not be evaluated. See the criterion details below."
+    category == :zero_gate && return "A whole-assignment scoring rule applies. Its reasons and the recorded check results are shown below."
+    return ""
+end
+
 function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, failure_category::Symbol, failure_message::AbstractString, stdout::String, stderr::String;
-    test_results=NamedTuple[], zero_reasons::Vector{String}=String[])
+    test_results=NamedTuple[], zero_reasons::Vector{String}=String[], withheld_reasons::Vector{String}=String[])
     io = IOBuffer()
     println(io, "# Student Feedback Report")
+    println(io)
+    isempty(student_id) || println(io, "Student: `", student_id, "`")
+    println(io, "Total: ", total_awarded, " / ", total_possible, " marks")
+    isempty(test_results) || println(io, "Checks: ", _student_test_summary(first(test_results)))
     println(io)
     if !isempty(zero_reasons)
         println(io, "## ASSIGNMENT ZEROED")
@@ -669,14 +723,22 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
             println(io, "- ", reason)
         end
         println(io)
+    elseif !isempty(withheld_reasons)
+        points = sum(item.points for item in rubric if item.kind == :marks; init=0)
+        println(io, "## BEHAVIORAL MARKS WITHHELD")
+        println(io)
+        println(io, "**The default whole-run policy withholds all ", points, " behavioral marks, including marks for groups whose checks met expectations.**")
+        println(io, "The default policy requires the behavioral run and reference comparisons to complete without unmet expectations or evaluation errors. Property checks are scored separately; no fatal zero-mark rule was triggered.")
+        println(io, "This notice does not itself indicate forbidden code. The checks or execution issues below explain why behavioral marks were withheld:")
+        println(io)
+        for reason in withheld_reasons
+            println(io, "- ", reason)
+        end
+        println(io)
     end
-    isempty(student_id) || println(io, "Student: `", student_id, "`")
-    println(io, "Status: ", passed ? "passed" : "failed")
     if failure_category != :none
-        println(io, "Failure: **", failure_category, "** — ", failure_message)
+        println(io, "Grading note: ", _student_grading_note(failure_category))
     end
-    println(io, "Exit code: ", exitcode)
-    println(io, "Total: ", total_awarded, " / ", total_possible, " marks")
     println(io)
     println(io, "## Behavioral Test Results")
     println(io)
@@ -685,11 +747,7 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
         println(io, "No behavioral results were recorded; tests could not start or the process stopped before reporting.")
     end
     for result in test_results
-        println(io, "\n- ", result.name, ": **", result.status, "**; ", result.passed, " passed, ", result.failed,
-                " failed, ", result.errored, " errors, ", result.broken, " broken/skipped.")
-        if result.status in (:incomplete, :error)
-            println(io, "  This group may have unexecuted assertions; later independent groups are attempted when execution can continue.")
-        end
+        println(io, "\n- ", result.name, ": ", _student_test_summary(result))
     end
     println(io)
     println(io, "## Mark Summary")
@@ -712,8 +770,8 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
     else
         for result in marked_results
             println(io)
-            zero_note = result.zero_marks ? " Zeroes assignment if failed." : ""
-            println(io, "- `", result.id, "` [", result.visibility, "] ", result.description, ": ", result.awarded, " / ", result.points, " mark", result.points == 1 ? "" : "s", ". ", result.message, ".", zero_note)
+            zero_note = result.zero_marks ? " Whole-assignment zero policy applies when this requirement is not satisfied." : ""
+            println(io, "- `", result.id, "` [", result.visibility, "] ", result.description, ": ", result.awarded, " / ", result.points, " mark", result.points == 1 ? "" : "s", ". ", result.message, endswith(result.message, ".") ? "" : ".", zero_note)
         end
     end
     properties = [item for item in rubric if item.kind != :marks]
@@ -726,9 +784,9 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
             println(io)
             if _is_property_criterion(item.kind) && !isempty(property_queue)
                 result = popfirst!(property_queue)
-                status = result.passed ? "passed" : "failed"
+                status = result.passed ? "satisfied" : "not satisfied or not evaluated"
                 points = isempty(property_scores) ? 0 : popfirst!(property_scores).awarded
-                zero_note = result.zero_marks ? " Zeroes assignment if failed." : ""
+                zero_note = result.zero_marks ? " Whole-assignment zero policy applies when this requirement is not satisfied." : ""
                 println(io, "- [", result.visibility, "] ", status, ": ", result.description, " (", points, " / ", result.points, " marks).", zero_note)
             else
                 println(io, "- [", item.visibility, "] ", item.description)
@@ -739,13 +797,20 @@ function _student_grade_report(student_id::AbstractString, passed::Bool, exitcod
         println(io)
         println(io, "## Reference Tests")
         for result in reference_results
-            status = result.passed ? "passed" : "failed"
+            status = result.passed ? "matched" : "did not match or could not be evaluated"
             println(io)
             println(io, "- [", result.visibility, "] `", result.function_name, "` input ", result.index, " ", status, ": ", result.message)
         end
     end
     println(io)
     println(io, "## Test Output")
+    println(io)
+    println(io, "Technical diagnostics are preserved below for review; their status labels do not describe the assignment as a whole.")
+    println(io, "Process exit code: ", exitcode)
+    if failure_category != :none
+        println(io, "Diagnostic category: `", failure_category, "`")
+        println(io, "Diagnostic detail: ", failure_message)
+    end
     if isempty(strip(stdout)) && isempty(strip(stderr))
         println(io)
         println(io, "No test output was captured.")
@@ -983,7 +1048,9 @@ end
 
 Convert a Markdown-format student report to a self-contained HTML document with
 inline CSS. The conversion handles headings, bullet lists, fenced code blocks,
-and inline backtick spans.
+and inline backtick spans. Diagnostic arguments are retained for compatibility;
+the report supplies its own student-facing explanations and technical appendix,
+without adding a blanket failure banner.
 """
 function _build_html_report(markdown_report::AbstractString, failure_category::Symbol, failure_message::AbstractString)
     io_body = IOBuffer()
@@ -1020,8 +1087,6 @@ function _build_html_report(markdown_report::AbstractString, failure_category::S
     in_ul && println(io_body, "</ul>")
     in_pre && println(io_body, "</pre>")  # close any unterminated fenced code block
 
-    banner = failure_category == :none ? "" :
-        "<div class=\"failure-banner\"><strong>$(uppercase(string(failure_category)))</strong>: $(_html_escape(String(failure_message)))</div>\n"
     body = String(take!(io_body))
 
     return """<!DOCTYPE html>
@@ -1032,7 +1097,6 @@ body{font-family:sans-serif;max-width:860px;margin:2em auto;padding:0 1em;color:
 h1{border-bottom:2px solid #444;padding-bottom:.3em}
 h2{margin-top:1.5em;border-bottom:1px solid #ddd;padding-bottom:.2em}
 h3{margin-top:1em}
-.failure-banner{background:#fde;border:1px solid #c88;padding:.5em 1em;border-radius:4px;margin:1em 0;font-size:.95em}
 ul{margin:.3em 0;padding-left:1.5em}
 li{margin:.15em 0}
 code{background:#f0f0f0;padding:0 .25em;border-radius:2px;font-family:monospace;font-size:.93em}
@@ -1040,7 +1104,7 @@ pre{background:#f4f4f4;padding:.8em;overflow-x:auto;border-radius:4px;font-size:
 </style>
 </head>
 <body>
-$(banner)$(body)
+$(body)
 </body>
 </html>"""
 end

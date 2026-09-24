@@ -7,6 +7,28 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+### Fixed (default withholding explanation)
+
+- Default whole-run behavioral withholding now has a prominent
+  `BEHAVIORAL MARKS WITHHELD` notice, identifying the triggering checks and
+  locations in reports and brief summaries even when no fatal rule applies.
+- Passing criteria link their withheld marks to that notice. Property points,
+  forbidden-code findings, and whole-assignment zero policies are distinguished;
+  scoring behavior is unchanged.
+- Added coverage for default withholding, reference-oracle problems, absence of
+  false fatal-rule notices, and zero totals without a whole-assignment gate.
+
+### Changed (student feedback tone)
+
+- Student reports now lead with awarded marks and counts of checks that met
+  expectations, without labeling entire assignments or groups as failed.
+- Criterion, property, and reference feedback uses descriptive wording. The
+  HTML failure-category banner is removed; technical diagnostics remain in
+  Test Output, and whole-assignment zero notices still identify their causes.
+- Scores, machine-readable statuses, CSV values, and CLI exit codes are unchanged.
+- Added tests for mixed outcomes, interrupted and skipped checks, retained
+  zero-policy explanations, and neutral Markdown/HTML presentation.
+
 ### Fixed (zero-mark visibility)
 
 - Whole-assignment zero policies now produce a prominent `ASSIGNMENT ZEROED`
