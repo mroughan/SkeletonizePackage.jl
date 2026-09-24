@@ -22,6 +22,7 @@ makedocs(;
         "Intro" => "index.md",
         "Features" => "features.md",
         "Pipeline" => "pipeline.md",
+        "Grading and Diagnostics" => "grading.md",
         "Additional Details" => "details.md",
         "Requirements" => "requirements.md",
         "API" => "api.md",

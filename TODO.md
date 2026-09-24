@@ -5,7 +5,7 @@
 - Replace simple string and regular-expression checks with JuliaSyntax-backed
   parsing where it makes requirements clearer and less heuristic.
 - Improve import and call detection so comments and strings do not count as
-  source-level behaviour unless a teacher explicitly asks for textual checks.
+  source-level behavior unless a teacher explicitly asks for textual checks.
 - Add clearer diagnostic messages for each property check explaining what was
   found and where.
 - Consider project-wide property scopes, function-scoped property scopes, and
@@ -36,6 +36,11 @@
 - Add validation rules specific to Pluto package structure.
 
 ## Partial Credit
+
+Per-group outcomes and continuation after failed assertions are implemented.
+These items concern future scoring policies: ordinary behavioral marks still
+require an overall passing run, and `zero_on_failure` can zero property points
+without hiding passing outcomes.
 
 - Extend `@marks` to accept `partial=true` and a `partial_scorer` function.
 - Allow reference tests to award fractional marks when a subset of generated inputs match.

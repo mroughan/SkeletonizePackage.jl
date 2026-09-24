@@ -13,6 +13,11 @@ Commands:
 
 # Example
 
+These commands assume the repository examples are available and
+`SortingAssignmentSubmission` is a completed, instantiated submission that passes
+all tests and properties. Output includes validation messages and generated paths
+in addition to the return codes shown below; an untouched skeleton will not pass.
+
 ```julia
 julia> main(["validate", "examples/SortingAssignment"])
 0
@@ -35,6 +40,9 @@ julia> main([
 ```
 
 The `grade` command prints output paths when `--report` or `--csv` is supplied.
+It returns `0` for a passing grade, `2` for a grading result that did not pass,
+and `1` for usage or caught command errors. Review reports for private test
+expressions and inputs before sharing them with students.
 Failures also produce a brief stderr diagnostic even when reports are saved.
 `--zero-on-failure` zeroes the entire assignment after a behavioral failure,
 while preserving passing test outcomes in the report:

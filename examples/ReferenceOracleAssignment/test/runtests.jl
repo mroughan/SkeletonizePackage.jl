@@ -16,5 +16,7 @@ end
 
 @hidden_test begin
     @marks 3 "matches the reference implementation on generated inputs"
+    @test clamp01(-2) == 0
+    @test clamp01(2) == 1
     @reference_test clamp01 generator=[-2, -0.5, 0, 0.25, 1, 2]
 end

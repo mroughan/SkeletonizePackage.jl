@@ -12,12 +12,15 @@ broken generated Julia source is caught early. It also checks package/module
 wiring and reports teaching-design warnings, such as an annotated source file
 that is not included or a solution block without nearby scaffolding code.
 
-The broader grading philosophy is behavioural rather than textual: submission
+The broader grading philosophy is behavioral rather than textual: submission
 packages should be checked using public tests, hidden tests, reference
 comparisons, interface checks, and documentation examples, not by comparing
 their source code directly with the reference solution.
 
 ## Command Line
+
+For grading options, scoring policies, and environment troubleshooting, see
+[Grading and Diagnostics](grading.md).
 
 The package exposes a small CLI-style entry point:
 

@@ -74,7 +74,10 @@ packages also include a student-skeleton `README.md`, `STUDENT_INSTRUCTIONS.md`,
 `RUBRIC.md`, and `AGENTS.md`. Instructions describe copied directories such as
 `data/`, explain marks, and direct students to the rubric. Grading writes a
 Markdown feedback report for the student and a CSV row that can be appended to a
-class marks file.
+class marks file. HTML and Gradescope JSON are also available. Failed assertions
+do not prevent later tests from being attempted, and group outcomes remain
+visible even when scoring awards zero. See [Grading and Diagnostics](grading.md)
+for `zero_on_failure`, environment diagnostics, and report-sharing precautions.
 
 ## Example 1 - Very Thin Example
 
@@ -230,6 +233,8 @@ student submission directly with the teacher's reference implementation.
 ```julia
 @hidden_test begin
     @marks 3 "matches the reference implementation on generated inputs"
+    @test clamp01(-2) == 0
+    @test clamp01(2) == 1
     @reference_test clamp01 generator=[-2, -0.5, 0, 0.25, 1, 2]
 end
 ```
@@ -247,7 +252,7 @@ outputs. A passing report contains entries like:
 ## Example 5 - Structural and Shortcut Policies
 
 `examples/RecursiveAssignment` demonstrates structural requirements such as
-requiring recursion and marking a docstring separately from behavioural tests.
+requiring recursion and marking a docstring separately from behavioral tests.
 
 `examples/ShortcutPolicyAssignment` demonstrates a stricter AI/package policy
 and a zero-mark gate for a forbidden shortcut package. These examples are useful

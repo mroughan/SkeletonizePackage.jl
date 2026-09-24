@@ -57,6 +57,10 @@ Mark tests that should be visible to students and also run for teachers.
 Generated Julia output wraps each kept block in a named `@testset`, using the
 first `@marks` description when present.
 
+During `grade_submission`, each block is a recorded test group: failed assertions
+do not stop later assertions, and its outcome is reported independently of marks.
+Normal macro execution simply evaluates the body, as in the example below.
+
 # Example
 
 ```julia
@@ -78,6 +82,10 @@ end
 Mark teacher-only grading tests. These tests are removed from student skeletons
 but run normally in the annotated reference package and teacher-mode output.
 Teacher-mode Julia output wraps each block in a named `@testset`.
+
+The grading runner records failures and attempts later independent groups. An
+exception outside an assertion skips the remainder of its group; setup errors,
+process exits, and timeouts can prevent subsequent groups from running.
 
 # Example
 
@@ -102,6 +110,11 @@ extracts these lines into `RUBRIC.md`.
 Each `@marks` line creates a rubric criterion. The first description in a
 student or hidden test block also names its generated `@testset`. Prefer one
 coherent marked criterion per block.
+
+During grading, the runner records the reached source location to associate the
+criterion with its group. Behavioral points require both a passing group and an
+overall passing behavioral run. A passing outcome can therefore receive zero
+points. Empty and skipped-only groups earn no behavioral points.
 
 # Example
 
@@ -140,7 +153,7 @@ end
 
 Requirements are grading metadata and do not run as ordinary reference-package
 tests. During grading they are evaluated against the student submission. In the
-generated rubric they are summarized as:
+generated rubric they are summarized as (criterion IDs omitted here):
 
 ```text
 - Requires (1 mark): exports the required function (must satisfy `exported(mysort)`)
@@ -149,6 +162,9 @@ generated rubric they are summarized as:
 
 During grading, `marks=N` awards marks for the property itself. `zero_marks=true`
 turns a failed property into a whole-assignment zeroing condition.
+An overall zero policy can withhold points for a passing property without
+changing its reported outcome. `grade_submission(...; zero_on_failure=true)`
+also withholds property points after a behavioral failure.
 """
 macro require(spec, args...)
     return :(nothing)
@@ -196,7 +212,7 @@ recorded requirements against submissions separately.
 end
 ```
 
-Generated rubric excerpt:
+Generated rubric excerpt (criterion IDs omitted):
 
 ```text
 - Requires: must satisfy `exported(fib)`
@@ -217,13 +233,18 @@ runtime in ordinary tests this macro is a no-op. During grading,
 in both the reference package and the submission package, then compares their
 outputs.
 
+This annotation does not itself award points or count as a Julia assertion.
+If its block has `@marks`, include meaningful ordinary assertions too: a group
+without evaluated assertions earns no behavioral points. Oracle results are
+reported separately and must pass for an overall passing behavioral run.
+
 # Example
 
 ```julia
 @reference_test fib generator=1:30
 ```
 
-Generated rubric entry:
+Generated rubric entry (criterion ID omitted):
 
 ```text
 - Reference test: reference behaviour `fib generator=1:30`

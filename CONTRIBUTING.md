@@ -3,7 +3,7 @@
 Thanks for helping improve `SkeletonizePackage.jl`. This package is intended to
 make Julia teaching assignments easier to write, distribute, and grade, so
 contributions are most useful when they keep teacher workflows clear, student
-outputs predictable, and grading behaviour easy to audit.
+outputs predictable, and grading behavior easy to audit.
 
 ## Development Setup
 
@@ -61,22 +61,33 @@ The current documentation pages are:
 - `docs/src/index.md`
 - `docs/src/features.md`
 - `docs/src/pipeline.md`
+- `docs/src/grading.md`
 - `docs/src/details.md`
 - `docs/src/requirements.md`
 - `docs/src/api.md`
 
 When adding a new page, register it in `docs/make.jl`.
 
+Keep grading changes consistent across the README, grading guide, API docstrings,
+architecture, and generated guidance in `src/templates.jl` and `src/rubric.jl`.
+Do not silently regenerate existing student submissions when updating templates.
+Mirror docstring examples in `test/docstring_examples.jl`; cover generated
+instructions and rubric text in package tests. `test/grading_diagnostics.jl`
+checks continued execution, outcome/score separation, missing dependencies,
+interrupted runs, and report exports. Run it through the main test suite, which
+provides its fixtures. Preserve the downloaded upstream sources under
+`references/grading/`; their README records provenance and licensing.
+
 ## Contribution Guidelines
 
 - Keep changes focused and avoid unrelated refactors.
-- Keep teacher-only and student-facing behaviour separate and explicit.
+- Keep teacher-only and student-facing behavior separate and explicit.
 - Preserve generated skeleton packages as ordinary Julia packages that students
   can open, instantiate, test, and submit.
 - Keep teacher-only material out of generated student skeletons.
 - Add or update tests when changing generation, validation, grading, rubric
   extraction, property checks, configuration parsing, report output, or CLI
-  behaviour.
+  behavior.
 - Keep examples in `examples/` runnable and representative, since they are both
   documentation and regression tests.
 - Use `SkeletonizePackage.inc` for assignment configuration. It should follow

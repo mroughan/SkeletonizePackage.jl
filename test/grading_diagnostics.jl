@@ -42,6 +42,8 @@ end
         @test occursin("test_error", diagnostic)
         @test occursin("First diagnostic:", diagnostic)
         @test occursin("runtests.jl:", diagnostic)
+        @test !occursin("ASSIGNMENT ZEROED", diagnostic)
+        @test !occursin("ASSIGNMENT ZEROED", result.student_report)
         root = first(result.test_results)
         @test (root.passed, root.failed, root.errored, root.broken) == (3, 1, 1, 1)
         by_id = Dict(r.id => r for r in result.criterion_results)
@@ -69,6 +71,13 @@ end
         @test occursin("test_error", strict.gradescope_json)
         @test occursin("passed: exports answer (must satisfy `exported(answer)`) (0 / 1 marks)", strict.student_report)
         @test !occursin("(1 / 1 marks)", strict.student_report)
+        @test startswith(strict.student_report, "# Student Feedback Report\n\n## ASSIGNMENT ZEROED")
+        @test occursin("All marks are withheld", strict.student_report)
+        @test occursin("zero_on_failure=true", strict.failure_message)
+        @test occursin("Test group \"same description\"", strict.failure_message)
+        @test occursin("$(test_path):5", strict.failure_message)
+        @test occursin("<h2>ASSIGNMENT ZEROED</h2>", strict.html_report)
+        @test occursin("ASSIGNMENT ZEROED", strict.gradescope_json)
         legacy = GradeResult((getfield(strict, i) for i in 1:21)...)
         @test legacy.total_awarded == strict.total_awarded
         @test isempty(legacy.test_results)
@@ -76,19 +85,25 @@ end
         checklist = read(write_teacher_checklist(reference), String)
         @test occursin("zero_on_failure=true", plan)
         @test occursin("dependency/loading", plan)
+        @test occursin("ASSIGNMENT ZEROED", plan)
+        @test occursin("ASSIGNMENT ZEROED", checklist)
         @test occursin("unrun test groups", checklist)
 
         code, _, err = _capture_main(["grade", reference, submission, "--zero-on-failure", "--report", joinpath(tmp, "cli.md")])
         @test code == 2
         @test occursin("test_error", err)
+        @test occursin("ASSIGNMENT ZEROED", first(split(err, '\n')))
+        @test occursin("$(test_path):5", first(split(err, '\n')))
         @test occursin("Total: 0 /", read(joinpath(tmp, "cli.md"), String))
 
         write(test_path, "using SkeletonizePackage, Test\nusing MissingGradingDependency12345\n@hidden_test begin\n    @marks 2 \"never reached\" id=\"unrun\"\n    @test true\nend\n")
-        missing = grade_submission(reference, submission; io=nothing)
+        missing = grade_submission(reference, submission; zero_on_failure=true, io=nothing)
         @test missing.failure_category == :environment_failure
         @test occursin("MissingGradingDependency12345", missing.failure_message)
         @test occursin("instantiate", missing.failure_message)
         @test occursin("not run", only(filter(r -> r.id == "unrun", missing.criterion_results)).message)
+        @test occursin("ASSIGNMENT ZEROED", missing.failure_message)
+        @test occursin("zero_on_failure=true", missing.failure_message)
 
         write(test_path, "using Test\n@testset \"before exit\" begin\n @test true\nend\nexit(0)\n@test false\n")
         exited = grade_submission(reference, submission; io=nothing)
@@ -125,11 +140,23 @@ end
 @testset "reference and property failures preserve behavioral outcomes" begin
     mktempdir() do tmp
         reference, submission = _write_grade_fixture!(tmp; forbidden_import=true)
-        gated = grade_submission(reference, submission; io=nothing)
+        diagnostics = IOBuffer()
+        gated = grade_submission(reference, submission; io=diagnostics)
         @test gated.total_awarded == 0
         @test gated.failure_category == :zero_gate
         @test all(r -> r.passed, filter(r -> r.kind == :marks, gated.criterion_results))
         @test first(gated.test_results).passed == 2
+        test_path = joinpath(reference, "test", "runtests.jl")
+        line = findfirst(s -> occursin("@forbid imports", s), readlines(test_path))
+        location = "$test_path:$line"
+        @test occursin("zero_marks=true", gated.failure_message)
+        @test occursin("does not import DataFrames", gated.failure_message)
+        @test occursin("Rule declared at $location", gated.failure_message)
+        @test occursin("ASSIGNMENT ZEROED", String(take!(diagnostics)))
+        @test startswith(gated.student_report, "# Student Feedback Report\n\n## ASSIGNMENT ZEROED")
+        @test occursin(location, first(split(gated.student_report, "## Behavioral Test Results")))
+        @test occursin("ASSIGNMENT ZEROED", gated.html_report)
+        @test occursin("ASSIGNMENT ZEROED", gated.gradescope_json)
 
         reference, submission = _write_grade_fixture!(tmp)
         write(joinpath(reference, "src", "Reference.jl"), "module Reference\nexport answer\nanswer() = error(\"reference implementation broken\")\nend\n")
@@ -139,12 +166,54 @@ end
         @test first(broken_reference.test_results).passed == 2
         @test occursin("reference implementation broken", broken_reference.failure_message)
         @test all(r -> r.passed, filter(r -> r.kind == :marks, broken_reference.criterion_results))
+        @test occursin("zero_on_failure=true", broken_reference.failure_message)
+        @test occursin("Reference test answer, input 1", broken_reference.failure_message)
+        @test occursin("Oracle declaration(s):", broken_reference.failure_message)
 
         write(joinpath(reference, "test", "runtests.jl"), "using SkeletonizePackage, Test\n@test true\n@assignment_requirements begin\n @require exported(missing_name) marks=1 \"required interface\"\nend\n")
         property = grade_submission(reference, submission; io=nothing)
         @test property.failure_category == :property_failure
         @test first(property.test_results).passed == 1
     end
+end
+
+@testset "multiple zeroing causes and included assertion locations" begin
+    mktempdir() do tmp
+        reference, submission = _write_grade_fixture!(tmp; passing=false, forbidden_import=true)
+        test_path = joinpath(reference, "test", "runtests.jl")
+        open(test_path, "a") do io
+            write(io, "\n@assignment_requirements begin\n    @require exists(missing_function) zero_marks=true id=\"fatal-interface\" \"required function\"\nend\ninclude(\"extra.jl\")\n")
+        end
+        included_path = joinpath(reference, "test", "extra.jl")
+        write(included_path, "@testset \"extra <check>\" begin\n    @test false\n    @test true\nend\n")
+        out = IOBuffer()
+        result = grade_submission(reference, submission; zero_on_failure=true, io=out)
+        @test result.total_awarded == 0
+        @test result.failure_category == :test_failure
+        @test first(result.test_results).passed == 2
+        @test first(result.test_results).failed == 2
+        top = first(split(result.student_report, "## Behavioral Test Results"))
+        @test occursin("does not import DataFrames", top)
+        @test occursin("[fatal-interface]", top)
+        @test occursin("$included_path:2", top)
+        @test occursin("Test group \"extra <check>\"", top)
+        @test occursin("extra &lt;check&gt;", result.html_report)
+        @test !occursin("extra <check>", result.html_report)
+        summary = first(split(String(take!(out)), '\n'))
+        @test occursin("ASSIGNMENT ZEROED", summary)
+        @test occursin("[fatal-interface]", summary)
+        @test occursin("more zeroing causes; see report", summary)
+    end
+end
+
+@testset "zero-policy notices without assertion evidence" begin
+    reasons = SkeletonizePackage._zero_mark_reasons(
+        SkeletonizePackage.RubricItem[], CriterionResult[], NamedTuple[], ReferenceTestResult[],
+        SkeletonizePackage.ReferenceTestSpec[]; reference_path="/reference", zero_on_failure=true,
+        behavioral_passed=false, failure_message="Process interrupted.")
+    @test occursin("zero_on_failure=true", only(reasons))
+    @test occursin("No failed assertion location was recorded", only(reasons))
+    @test !occursin("Test Failed", only(reasons))
 end
 
 @testset "grading error diagnostics" begin

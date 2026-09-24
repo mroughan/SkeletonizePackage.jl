@@ -1,6 +1,6 @@
 # Requirements
 
-`@marks` describes how many marks a behaviour is worth. `@require` and
+`@marks` describes how many marks a behavior is worth. `@require` and
 `@forbid` describe code properties that are not always captured by example
 tests. Put them near tests, or group them in an `@assignment_requirements`
 block:
@@ -24,7 +24,7 @@ All `@require` and `@forbid` declarations are grading metadata: they do not run
 as ordinary reference-package tests, and are evaluated against submissions
 during grading. This allows a teacher reference implementation to deliberately
 omit a required student export, docstring, or other source property. All public and hidden
-behavioural tests should still pass for the reference package.
+behavioral tests should still pass for the reference package.
 
 ## Marks and Zeroing Conditions
 
@@ -38,7 +38,10 @@ end
 ```
 
 Those marks are included in the generated `RUBRIC.md` and in the grading CSV.
-They are awarded only when the property passes.
+They are awarded when the property passes, unless an overall zero-mark policy
+withholds them. By default, behavioral failures do not withhold property points.
+`zero_on_failure=true` additionally zeros those points after a behavioral failure.
+The property's observed outcome remains visible regardless of its awarded marks.
 
 Add `id="..."` to `@marks`, `@require`, or `@forbid` when you want a stable
 criterion identifier. IDs appear in `RUBRIC.md`, grading results, and student
@@ -55,7 +58,9 @@ end
 
 If this property fails during grading, the student's total is set to zero and
 the feedback report notes that the assignment was zeroed. This is useful for
-forbidden shortcuts that defeat the point of an exercise.
+forbidden shortcuts that defeat the point of an exercise. The gate does not stop
+behavioral tests from running or hide passing outcomes. See
+[Grading and Diagnostics](grading.md) for the distinction between marks and outcomes.
 
 ## Function and Interface Properties
 
@@ -139,9 +144,15 @@ The checked-in `examples/ReferenceOracleAssignment` package shows the pattern:
 ```julia
 @hidden_test begin
     @marks 3 "matches the reference implementation on generated inputs"
+    @test clamp01(-2) == 0
+    @test clamp01(2) == 1
     @reference_test clamp01 generator=[-2, -0.5, 0, 0.25, 1, 2]
 end
 ```
 
 When `grade_submission` runs, the student feedback report includes a
 `Reference Tests` section with one entry for each generated input.
+The oracle annotation is metadata, not a Julia assertion or an independent
+points award. A marked group needs evaluated assertions to earn behavioral
+points, and all oracle comparisons must pass for the overall behavioral run
+to pass. A group containing only `@marks` and `@reference_test` earns no points.

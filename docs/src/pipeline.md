@@ -56,9 +56,11 @@ SortingAssignmentSkeleton/
 The student's submitted package is graded against the original reference
 package. By default, automarking runs the teacher's original `test/runtests.jl`
 against the submitted package, so modified or corrupted tests in the submitted
-copy do not affect the grade. The grading command writes two different outputs:
-a Markdown feedback report for the student, and a CSV row for the teacher's
-marks table.
+copy do not affect the grade. The shown command writes a Markdown feedback
+report and a CSV row for the teacher's marks table. HTML and Gradescope JSON
+exports are also available. Review diagnostic reports before sharing them with
+students because failures can expose hidden-test expressions and inputs. See
+[Grading and Diagnostics](grading.md) for policies and troubleshooting.
 
 Teacher scaffolds also include `GRADING_PLAN.md` and `TEACHER_CHECKLIST.md`.
 These files stay with the teacher reference package and are not copied into the
@@ -144,7 +146,7 @@ end
 ```
 
 The generated skeleton package includes `RUBRIC.md`. Hidden test code remains
-private, but the `@marks` description tells students what behaviour will be
+private, but the `@marks` description tells students what behavior will be
 graded. Generated test blocks become named `@testset`s. Prefer one coherent
 `@marks` criterion per block.
 
@@ -195,7 +197,7 @@ Validation errors block generation when `validate=true`. Warnings and notes are
 teacher-facing design feedback, for example missing public tests, hidden tests,
 scaffolding blocks that do not look like student prompts, annotated source files
 that are not included by the package, or package/module naming mismatches.
-Generation and the `validate` command also run the reference behavioural tests
+Generation and the `validate` command also run the reference behavioral tests
 and warn when they fail. For direct API calls, request this explicitly with
 `validate_reference_package(path; run_tests=true)`.
 

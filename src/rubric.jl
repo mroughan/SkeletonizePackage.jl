@@ -141,10 +141,18 @@ function _write_rubric(dst::AbstractString, items::Vector{RubricItem})
 
 This rubric is generated from `@marks` entries embedded beside the assignment
 tests. Public criteria correspond to tests you can run in this skeleton. Hidden
-criteria describe additional grading behaviour without revealing the private
+criteria describe additional grading behavior without revealing the private
 test cases. Each `@marks` line creates a separate criterion. Test blocks are
 shown as named testsets using their first marks description; teachers are
 encouraged to keep one coherent marked criterion per block.
+
+Test outcomes and marks are separate. By default, all ordinary test marks
+require an overall passing behavioral run; passing code properties can earn
+points independently. A teacher-selected whole-assignment zero policy or a
+failed fatal requirement can withhold all points without hiding passing
+outcomes. Per-group feedback does not imply partial credit. Groups without
+evaluated assertions earn no behavioral marks; reference-oracle metadata is
+evaluated separately. Confirm the scoring policy in the assignment instructions.
 
 Total: $total marks
 

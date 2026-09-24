@@ -7,6 +7,28 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+### Fixed (zero-mark visibility)
+
+- Whole-assignment zero policies now produce a prominent `ASSIGNMENT ZEROED`
+  notice at the top of Markdown/HTML reports and in brief examiner and
+  Gradescope summaries, naming triggering checks and available file/line locations.
+- Fatal properties identify their reference rule declarations; failed assertions
+  identify recorded test groups and assertion locations. Reports list all causes,
+  including simultaneous gates and behavioral failures, without changing scores,
+  passing outcomes, or the underlying failure category.
+- Added regression tests for zero notices, multiple triggers, included test files,
+  missing dependencies, absent location evidence, and HTML escaping.
+
+### Documentation
+
+- Added a grading and diagnostics guide covering score/outcome separation,
+  continuation limits, dependency troubleshooting, report privacy, and exports.
+- Aligned the README, architecture, documentation site, contributor notes, API
+  examples, and generated assignment guidance with the grading runner.
+- Corrected unsupported architecture configuration examples and the Sorting
+  grading example's total. Added assertions to the documented reference-oracle
+  example so its marked group can earn points, with regression coverage.
+
 ### Added (grading diagnostics)
 
 - Behavioral test groups now continue after failed assertions, with counts and

@@ -77,7 +77,9 @@ Fields:
 - `failure_category` — `:none`, `:environment_failure`, `:load_failure`,
   `:test_failure`, `:test_error`, `:execution_failure`, `:reference_failure`,
   `:property_failure`, `:timeout`, or `:zero_gate`.
-- `failure_message` — human-readable explanation of the failure category.
+- `failure_message` — human-readable explanation of the failure category; starts
+  with `ASSIGNMENT ZEROED` and the triggering checks when a whole-assignment
+  zero policy applies. The category still identifies the underlying failure.
 
 # Example
 
@@ -163,6 +165,9 @@ property points remain independent. Passing groups are explicitly reported even
 when their marks are withheld. Use `zero_on_failure=true` to also withhold property
 points after a behavioral failure. Fatal `zero_marks=true` requirements continue
 to zero the entire assignment without hiding successful test outcomes.
+When a whole-assignment zero policy is triggered, reports and brief diagnostics
+begin with `ASSIGNMENT ZEROED`, identify the triggering checks, and show recorded
+assertion locations or the reference file/line declaring a fatal rule.
 
 # Keywords
 
@@ -194,7 +199,7 @@ julia> result.csv_header
 "student_id,status,hidden,public,total"
 
 julia> result.csv_row
-"s123,passed,4,3,7"
+"s123,passed,4,5,9"
 
 julia> startswith(result.student_report, "# Student Feedback Report")
 true
@@ -205,6 +210,12 @@ true
 julia> !isempty(result.gradescope_json)
 true
 ```
+
+This example assumes a completed, instantiated SortingAssignmentSubmission that
+passes all tests and properties. It includes 7 behavioral points and 2 property
+points. An unmodified skeleton is intentionally incomplete and will not produce
+these results. Review reports before sharing: diagnostics can expose hidden-test
+expressions and inputs. See `GradeResult.test_results` for recorded group outcomes.
 """
 function grade_submission(
     reference_path::AbstractString,
@@ -285,8 +296,16 @@ function grade_submission(
                 (:property_failure, "One or more marked submission requirements failed; see Code Properties.")
             end
         end
+        zero_reasons = _zero_mark_reasons(rubric, criterion_results, test_results, reference_results, reference_specs;
+            reference_path=abspath(reference_path), zero_on_failure=zero_on_failure,
+            behavioral_passed=behavioral_passed, failure_message=cat_message)
+        if !isempty(zero_reasons)
+            summary = join(first(zero_reasons, 3), " | ")
+            length(zero_reasons) > 3 && (summary *= " | $(length(zero_reasons) - 3) more zeroing causes; see report.")
+            cat_message = "ASSIGNMENT ZEROED: all $total_possible marks withheld. " * summary * " Original diagnostic: " * cat_message
+        end
         report = _student_grade_report(String(student_id), passed, exitcode, rubric, reference_results, property_results, criterion_results, awarded, possible, total_awarded, total_possible, category, cat_message, stdout_text, stderr_text;
-            test_results=test_results)
+            test_results=test_results, zero_reasons=zero_reasons)
         html = _build_html_report(report, category, cat_message)
         gsj = _build_gradescope_json(String(student_id), criterion_results, total_awarded, total_possible;
             summary=string(category, ": ", cat_message))
@@ -297,8 +316,7 @@ function grade_submission(
                 totals = first(test_results)
                 println(io, "Tests: ", totals.passed, " passed, ", totals.failed, " failed, ", totals.errored, " errors, ", totals.broken, " broken/skipped. Marks: ", total_awarded, "/", total_possible, ".")
                 if !isempty(totals.details)
-                    lines = filter(!isempty, strip.(split(first(totals.details), '\n')))
-                    println(io, "First diagnostic: ", first(join(first(lines, 3), " "), 400))
+                    println(io, "First diagnostic: ", first(_brief_failure_detail(first(totals.details)), 400))
                 end
             end
         end
@@ -316,6 +334,51 @@ function grade_submission(
         rm(results_path; force=true)
         rm(results_path * ".next"; force=true)
     end
+end
+
+function _brief_failure_detail(detail::AbstractString)
+    lines = filter(!isempty, strip.(split(detail, '\n')))
+    return join(first(lines, 3), " ")
+end
+
+function _zero_mark_reasons(rubric::Vector{RubricItem}, criteria::Vector{CriterionResult},
+    tests::Vector{NamedTuple}, references::Vector{ReferenceTestResult}, specs::Vector{ReferenceTestSpec};
+    reference_path::AbstractString, zero_on_failure::Bool, behavioral_passed::Bool,
+    failure_message::AbstractString)
+    reasons = String[]
+    # Criteria preserve rubric order; pair by position, not potentially duplicate IDs.
+    for (item, result) in zip(rubric, criteria)
+        _is_property_criterion(item.kind) && item.zero_marks && !result.passed || continue
+        location = string(joinpath(reference_path, item.path), ":", item.line)
+        push!(reasons, "zero_marks=true: fatal check [$(item.id)] $(item.description) did not pass. " *
+            "Rule declared at $location. $(result.message)")
+    end
+    if zero_on_failure && !behavioral_passed
+        behavioral_reasons = String[]
+        if !isempty(tests)
+            # Details are repeated in ancestor summaries; attribute each to its deepest group.
+            for detail in unique(first(tests).details::Vector{String})
+                index = findlast(t -> detail in t.details, tests)
+                group = index === nothing ? first(tests).name : tests[index].name
+                push!(behavioral_reasons, "Test group \"$group\": " * _brief_failure_detail(detail))
+            end
+        end
+        for result in references
+            result.passed && continue
+            declarations = String[string(joinpath(reference_path, spec.path), ":", spec.line)
+                for spec in specs if spec.function_name == result.function_name && spec.visibility == result.visibility]
+            location = isempty(declarations) ? "Declaration location unavailable." :
+                "Oracle declaration(s): " * join(unique(declarations), ", ") * "."
+            push!(behavioral_reasons, "Reference test $(result.function_name), input $(result.index) ($(result.input)): " *
+                _brief_failure_detail(result.message) * " $location")
+        end
+        if isempty(behavioral_reasons)
+            push!(behavioral_reasons, "$failure_message No failed assertion location was recorded; " *
+                "execution may be incomplete or no assertions were evaluated.")
+        end
+        append!(reasons, ("zero_on_failure=true: " * reason for reason in behavioral_reasons))
+    end
+    return reasons
 end
 
 function _read_behavioral_results(path::AbstractString)
@@ -592,10 +655,21 @@ function _awarded_points_by_category(rubric::Vector{RubricItem}, criterion_resul
 end
 
 function _student_grade_report(student_id::AbstractString, passed::Bool, exitcode::Int, rubric::Vector{RubricItem}, reference_results::Vector{ReferenceTestResult}, property_results::Vector{PropertyCheckResult}, criterion_results::Vector{CriterionResult}, awarded::Dict{String, Int}, possible::Dict{String, Int}, total_awarded::Int, total_possible::Int, failure_category::Symbol, failure_message::AbstractString, stdout::String, stderr::String;
-    test_results=NamedTuple[])
+    test_results=NamedTuple[], zero_reasons::Vector{String}=String[])
     io = IOBuffer()
     println(io, "# Student Feedback Report")
     println(io)
+    if !isempty(zero_reasons)
+        println(io, "## ASSIGNMENT ZEROED")
+        println(io)
+        println(io, "**Final mark: 0 / ", total_possible, ". All marks are withheld by a whole-assignment policy.**")
+        println(io, "The following checks triggered zeroing; passing test outcomes are still reported below.")
+        println(io)
+        for reason in zero_reasons
+            println(io, "- ", reason)
+        end
+        println(io)
+    end
     isempty(student_id) || println(io, "Student: `", student_id, "`")
     println(io, "Status: ", passed ? "passed" : "failed")
     if failure_category != :none

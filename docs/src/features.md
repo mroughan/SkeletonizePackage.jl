@@ -53,7 +53,7 @@ the same criterion appear consistently in the student rubric, feedback reports,
 and CSV mark rows. Generated test blocks become named testsets using their first
 marks description; prefer one coherent marked criterion per block.
 
-For behavioural checks, `@reference_test` lets you compare a submitted function
+For behavioral checks, `@reference_test` lets you compare a submitted function
 against the teacher implementation. You can provide explicit inputs or generate
 input cases with `generator=...`. Reference and submission packages are evaluated
 in separate Julia processes, which avoids module-name collisions when both
@@ -80,10 +80,10 @@ assignment-design problems: unsupported annotation forms, missing test
 structure, parsing issues, and other situations that would confuse the
 transformation. Generation can be configured to stop when validation reports an
 error, so mistakes are caught before students receive the package. Generation
-and CLI validation also run the reference behavioural tests and warn if a public
+and CLI validation also run the reference behavioral tests and warn if a public
 or hidden test fails.
 
-## Keep the Teacher Organised
+## Keep the Teacher Organized
 
 The package also writes teacher-facing material that stays out of the student
 skeleton. `GRADING_PLAN.md` records the broad assessment design and points
@@ -94,11 +94,18 @@ gives a compact preparation, skeleton-inspection, and grading checklist.
 ## Grade Submissions at Class Scale
 
 After students submit completed packages, use `grade_submission(...)` or the
-`grade` command to run the submission tests, source-property checks, and
-reference-oracle checks. Hidden rubric criteria remain visible in feedback
-without revealing private test code. Grading produces a Markdown feedback report
-for the student and a CSV row that can be appended to a class marks spreadsheet.
-The programmatic result also returns per-criterion `CriterionResult` values.
+`grade` command to run the teacher's tests against the submission, source-property
+checks, and reference-oracle checks. Failed assertions do not stop later tests.
+Reports distinguish actual outcomes from awarded marks, so a zero score can
+still show successful work. `zero_on_failure=true` also withholds property points
+after a behavioral failure; default scoring withholds ordinary behavioral points.
+
+Outputs include Markdown, HTML, Gradescope JSON, and a CSV marks row. Structured
+results include per-criterion `CriterionResult` values and per-group
+`test_results`. Brief diagnostics distinguish assertion failures from dependency,
+loading, reference, and execution problems. Review reports before sharing them:
+diagnostic details can expose hidden tests. See [Grading and Diagnostics](grading.md)
+for scoring, troubleshooting, and reporting limits.
 
 ## Use Julia or the Command Line
 

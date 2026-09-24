@@ -119,12 +119,15 @@ Rubric metadata and code properties can be declared beside tests or inside an
 assignment requirements block:
 
 ```julia
-@marks 2 "handles empty inputs" id="empty-inputs" category="correctness"
+@hidden_test begin
+    @marks 2 "handles empty inputs" id="empty-inputs"
+    @test mysort(Int[]) == Int[]
+end
 
 @assignment_requirements begin
-    @require exported(:mysort) marks=1 category="interface"
-    @forbid imports(:SortingAlgorithms) zero_marks=true
-    @reference_test mysort generator=[[3, 2, 1], Int[]] marks=3
+    @require exported(mysort) marks=1 id="interface-export"
+    @forbid imports(SortingAlgorithms) zero_marks=true
+    @reference_test mysort generator=[[3, 2, 1], Int[]]
 end
 ```
 
@@ -186,7 +189,7 @@ against a byte-for-byte copy of the reference implementation.
 - reference tests that compare submission outputs with fully qualified reference
   functions,
 - simple requirement checks from `@require` and `@forbid`,
-- rubric-linked marks with categories and totals,
+- rubric-linked marks grouped by visibility (`public` and `hidden`) and totals,
 - fatal `zero_marks=true` checks.
 
 Reference tests are useful when the teacher wants hidden tests to ask "does the
@@ -220,6 +223,8 @@ marks require an overall passing behavioral run. Property points are independent
 failure. Fatal property gates still zero the assignment. Neither scoring policy
 changes the recorded pass/fail outcomes, including `CriterionResult.passed`.
 Per-group outcomes do not imply automatic partial-credit scoring.
+Oracle annotations are separate metadata, not assertions within their enclosing
+groups. Empty or skipped-only groups do not earn ordinary behavioral marks.
 
 The child uses the submission project plus the examiner's active project as
 fallback test tooling, with startup files disabled. No automatic dependency
@@ -235,14 +240,18 @@ The implementation follows Julia's documented custom testset interface; see
 
 ### Output Formats
 
-Grading produces two complementary outputs:
+Grading returns structured results and supports four output formats:
 
-- a student feedback report, usually Markdown, explaining which criteria were
-  tested, what passed or failed, and how the result relates to the rubric;
+- Markdown and self-contained HTML feedback, explaining test-group outcomes
+  separately from criterion scores;
+- Gradescope JSON containing per-criterion scores and messages;
 - a compact marks CSV row suitable for concatenating across many students, with
   category totals and an assignment total.
 
-The report is pedagogical. The CSV row is administrative.
+The report is pedagogical. The CSV row is administrative. Diagnostic reports
+can contain private assertion expressions, inputs, and source locations; the
+examiner must review them before sharing them with students. For status fields,
+failure categories, and remediation, see [Grading and Diagnostics](docs/src/grading.md).
 
 ## Configuration
 
@@ -255,28 +264,22 @@ Example:
 ```text
 ---
 [assignment]
-name = "SortingAssignment"
-student_package = "SortingAssignmentStudent"
-source_path = "examples/SortingAssignment"
-student_path = "SortingAssignmentStudent"
+reference_path = "."
+skeleton_path = "../SortingAssignmentStudent"
+mode = "student"
 force = false
 validate = true
 instructions_path = "student_notes.md"
-
-[visibility]
-default = "student"
-
-[grading]
-public_tests = true
-hidden_tests = true
-reference_tests = true
-
-[agents]
-policy = "recorded"
+ai_policy = "recorded"
+copy_paths = "Project.toml, SkeletonizePackage.inc, src, test, data"
 ---
 config
 assignment
 ```
+
+Paths are relative to the configuration file's directory. This config controls
+generation, not grading. Grading options such as `zero_on_failure`, timeouts,
+and output paths are Julia keywords or CLI flags.
 
 ## Design Constraints
 
@@ -286,7 +289,7 @@ assignment
    deleting arbitrary line ranges that may leave broken syntax.
 3. Generated skeleton packages should remain ordinary Julia packages that
    students can read, test, and edit without special tooling.
-4. Hidden tests and reference tests should assess behaviour and interface
+4. Hidden tests and reference tests should assess behavior and interface
    contracts, not require the submission to be textually identical to the
    reference implementation.
 5. The visible skeleton, `RUBRIC.md`, requirements, and public tests should make
@@ -310,18 +313,20 @@ Reference tests and submission tests run in **separate Julia processes** spawned
   infinite loop affects only its own process; the grader process waits and reads the
   process exit code.
 
-Student source is loaded into the child process via `include_string`, not `eval` in the
-grader's own session. The child process has the same file-system permissions as the
-grader process, so it can read and write files — this is intentional (students need to
-be able to load their package dependencies).
+The behavioral runner includes the teacher's tests with expression instrumentation;
+their imports load the submitted package in the child environment. Reference-oracle
+probes use `include_string` in separate children. Student code is not evaluated in
+the grader's own session. Children have the grader's file-system permissions and
+can read and write files: process separation is not an OS security sandbox.
 
 ### Serialization
 
-Results are passed from child processes back to the grader via Julia's `Serialization`
-module written to temporary files. Julia's serialization format is not safe for
-untrusted data from a network adversary, but here the child process is started by the
-grader itself and the serialized data is written to a temp file that only the grader
-reads. There is no network boundary.
+Behavioral results use atomic TOML snapshots in temporary files so completed
+observations survive interrupted execution. Oracle probes use Julia's
+`Serialization` module. Serialized results are not safe to deserialize from
+untrusted producers; starting a child process does not make malicious student
+code trustworthy. Neither format establishes a security boundary. Use external
+OS isolation when the classroom trust assumptions do not hold.
 
 ### Threat model
 
@@ -345,6 +350,8 @@ Scenarios explicitly **out of scope**:
 - `config.jl`: INCspec/IncCSV-backed assignment configuration.
 - `generation.jl`: reference-to-skeleton package generation.
 - `grading.jl`: test execution, rubric scoring, feedback reports, and CSV rows.
+- `grading_runner.jl`: child-process test recorder, annotation instrumentation,
+  and incremental TOML result snapshots.
 - `properties.jl`: simple `@require` and `@forbid` property checks.
 - `rubric.jl`: rubric extraction and rendering.
 - `templates.jl`: Step 0 assignment setup templates.

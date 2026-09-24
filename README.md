@@ -83,7 +83,7 @@ report = validate_reference_package(
 isvalid(report)
 ```
 
-Generation and the CLI `validate` command run reference behavioural tests
+Generation and the CLI `validate` command run reference behavioral tests
 automatically and warn when a public or hidden test fails. Direct API validation
 only runs tests when `run_tests=true`.
 
@@ -172,7 +172,7 @@ grading, the student gets zero for the assignment.
 
 `@require`, `@forbid`, and `@assignment_requirements` are grading metadata and
 runtime no-ops. A reference solution may deliberately omit a student-required
-export or docstring; all public and hidden behavioural tests should still pass.
+export or docstring; all public and hidden behavioral tests should still pass.
 
 Reference tests can compare a submission against the teacher implementation
 during grading:
@@ -285,6 +285,9 @@ Validation warns about root files or directories that are not listed in
 
 ## Grading outputs
 
+See the [Grading and Diagnostics guide](docs/src/grading.md) for the complete
+workflow, scoring policies, result statuses, and dependency troubleshooting.
+
 `grade_submission(reference_path, submission_path)` grades a student submission
 against the reference package rubric. By default it runs the teacher's original
 `test/runtests.jl` against the submitted package, so changed tests in a student
@@ -308,6 +311,7 @@ submission do not affect automarking. The returned `GradeResult` includes:
 | Keyword | Default | Description |
 |---|---|---|
 | `student_id` | `basename(submission_path)` | Identifier in reports and CSV |
+| `test_path` | `reference/test/runtests.jl` | Alternate teacher-owned test entry point |
 | `report_path` | `nothing` | Write Markdown report to file |
 | `html_path` | `nothing` | Write HTML report to file |
 | `gradescope_path` | `nothing` | Write Gradescope JSON to file |
@@ -328,6 +332,14 @@ withholds all ordinary `@marks` points; property points remain independent.
 failure. Fatal `zero_marks=true` requirements also zero the entire assignment.
 Neither policy hides what passed: `CriterionResult.passed` describes the test
 outcome, while `awarded` describes the score.
+
+When either whole-assignment zero policy fires, the report begins with
+**ASSIGNMENT ZEROED**, naming the triggering checks and available file/line
+locations. Fatal properties show the reference rule's declaration location;
+assertion failures show Julia's recorded test location. The brief diagnostic,
+HTML banner, and Gradescope summary repeat the warning. All zeroing causes are
+listed in the report; the brief summary shows up to three and flags any others.
+The underlying failure category is retained, including environment errors.
 
 ```julia
 result = grade_submission(reference, submission;
@@ -357,6 +369,12 @@ The grader uses the submission environment with the examiner's active project
 as a fallback for test tooling. It does not install packages or rewrite the
 submission. Diagnostics identify the observed failure, but cannot always decide
 whether the student, the reference tests, or the examiner's environment caused it.
+
+Review reports before sharing them with students: assertion expressions, inputs,
+exceptions, and source locations can disclose hidden-test details. The reports
+are not automatically redacted. Grading runs in separate processes, not a
+security sandbox. The continuation policy applies to the grader, not to an
+ordinary student `Pkg.test()` run. `zero_on_failure` is not an INC config option.
 
 ### LMS-ready CSV export
 
@@ -457,7 +475,7 @@ keywords that appear only in comments or string values.
 ## Current status
 
 This is still an early package. Validation checks for blocking transformation
-errors and teaching-design warnings, and can warn when reference behavioural
+errors and teaching-design warnings, and can warn when reference behavioral
 tests fail. Property checks use comment/string-stripped source text to avoid
 false positives. The transformer remains conservative: annotation macros must
 appear on their own line.
@@ -471,7 +489,8 @@ This package has been developed with assistance from multiple AI coding agents:
   CSV export, timeout handling, HTML reports, noise-stripped property checks),
   architecture documentation, test writing, and CHANGELOG maintenance.
 - **OpenAI Codex** — used for initial documentation, tests, project scaffolding,
-  and grading continuation, diagnostics, and regression coverage.
+  grading continuation, diagnostics, regression coverage, and the grading
+  documentation and generated-guidance audit.
 
 Human review remains responsible for correctness, package design, and release
 decisions. AI-generated code has been reviewed and tested before inclusion.

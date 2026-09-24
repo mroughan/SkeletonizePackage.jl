@@ -1,5 +1,8 @@
 # API
 
+See [Grading and Diagnostics](grading.md) for scoring policies, test-result
+statuses, environment troubleshooting, CLI options, and report handling.
+
 ```@docs
 @solution
 @scaffolding

@@ -61,6 +61,19 @@ The files show the main features:
   `STUDENT_INSTRUCTIONS.md`.
 - `SkeletonizePackage.inc` configures skeleton generation, including the
   generated `AGENTS.md` AI-use policy.
+
+## Grading Policy
+
+Grade submissions against this original reference package. Failed assertions
+do not stop later grading tests, and reports separate observed outcomes from
+awarded marks. Default scoring withholds all ordinary behavioral marks after a
+behavioral failure; property points are independent. Use `zero_on_failure=true`
+(CLI: `--zero-on-failure`) to also withhold property points. Record your policy
+in `GRADING_PLAN.md` and communicate it to students.
+
+The grader does not install dependencies. Review dependency/loading diagnostics
+before finalizing marks, and review reports for hidden-test details before
+sharing them. Separate Julia processes are not a security sandbox.
 """)
     write(joinpath(root, "src", "$module_name.jl"), """
 module $module_name
@@ -233,6 +246,17 @@ allocated across public tests, hidden tests, and source-code requirements.
 Passing the visible tests is important, but hidden criteria and requirements
 such as exports or docstrings may also carry marks.
 
+Grading reports test outcomes separately from awarded marks. By default, a
+behavioral failure withholds all ordinary test marks, while passing source-code
+properties can still earn points. The teacher may choose a whole-assignment
+zero policy instead. Fatal requirements can also zero the assignment. Passing
+outcomes remain visible to the examiner even when no marks are awarded.
+
+The grader continues after failed assertions, but setup errors and interrupted
+execution can prevent later tests from running. Local `Pkg.test()` uses Julia's
+normal test behavior. Report dependency or loading problems to the teacher;
+these do not establish that every unrun test would fail.
+
 ## Editing and Reloading Code
 
 Edit the files in `src/`, save them, and rerun the tests. If you are working in a
@@ -313,6 +337,10 @@ Start with these documents:
 
 Most implementation work belongs under `src/`. Run the public tests with
 `julia --project=. -e 'using Pkg; Pkg.test()'`.
+
+Grading uses the teacher's original tests and reports outcomes separately from
+marks. A passing group can receive zero under the assignment's scoring policy;
+see `STUDENT_INSTRUCTIONS.md` and `RUBRIC.md` for details.
 """)
 end
 
@@ -437,7 +465,11 @@ function write_grading_plan(reference_path::AbstractString; plan_path::AbstractS
     println(io, "those annotations generate `RUBRIC.md` and drive grading.")
     println(io, "Grading reports test outcomes independently of marks and continues after failed assertions.")
     println(io, "Use `zero_on_failure=true` to zero the entire assignment after a behavioral failure while retaining those outcomes.")
+    println(io, "An ASSIGNMENT ZEROED notice names the triggering checks and available source locations at the top of reports and in the brief diagnostic.")
     println(io, "Review dependency/loading diagnostics before finalizing marks; an environment failure is not proof of an incorrect answer.")
+    println(io, "The grader does not install dependencies. Preserve submissions before repairing environments.")
+    println(io, "Review reports for private test expressions and inputs before sharing them with students.")
+    println(io, "Record the chosen scoring policy here and communicate it before assessment; it is not an INC generation setting.")
     println(io)
     println(io, "## Assessment Summary")
     println(io)
@@ -476,7 +508,7 @@ Use this checklist before distributing the generated student skeleton.
 - [ ] Edit the reference package name, source code, tests, and assignment notes.
 - [ ] Replace scaffolding placeholders with useful student prompts.
 - [ ] Check that every marked criterion has a clear description and stable ID.
-- [ ] Run the reference package tests; all public and hidden behavioural tests should pass.
+- [ ] Run the reference package tests; all public and hidden behavioral tests should pass.
 - [ ] Remember that `@assignment_requirements` may deliberately be unmet by the reference.
 - [ ] Decide whether AI use is `forbidden`, `recorded`, or `allowed` in `SkeletonizePackage.inc`.
 - [ ] Run `validate_reference_package(...)` and resolve all errors.
@@ -496,8 +528,12 @@ Use this checklist before distributing the generated student skeleton.
 - [ ] Run grading on one known-good submission and one known-bad submission.
 - [ ] Inspect the student feedback report.
 - [ ] Review passed, failed, errored, and unrun test groups independently of marks.
+- [ ] If ASSIGNMENT ZEROED appears, review its triggering checks and file/line locations before confirming the zero.
 - [ ] Resolve missing dependencies and other execution problems before finalizing marks.
 - [ ] Decide whether to use `zero_on_failure=true` for whole-assignment zero scoring.
+- [ ] Communicate the scoring policy before assessment; passing groups do not imply partial credit.
+- [ ] Preserve original submissions before environment repairs; the grader does not install dependencies.
+- [ ] Review diagnostic reports for hidden-test details before sharing them with students.
 - [ ] Inspect the CSV row and confirm category totals.
 - [ ] Keep `GRADING_PLAN.md` with the teacher materials.
 

@@ -85,6 +85,84 @@ assignment
         @test isempty(result.test_results)
     end
 
+    @testset "documented grading examples" begin
+        mktempdir() do tmp
+            for (name, expected_row, expected_count) in [
+                ("SortingAssignment", "s123,passed,4,5,9", 7),
+                ("ReferenceOracleAssignment", "s123,passed,3,3,6", 3),
+            ]
+                reference = joinpath(@__DIR__, "..", "examples", name)
+                submission = generate_skeleton_package(reference, joinpath(tmp, name);
+                    mode=:teacher, validate=false, io=nothing)
+                # A completed submission no longer needs the stripped annotation macros.
+                source_path = joinpath(submission, "src", "$name.jl")
+                write(source_path, replace(read(source_path, String), "using SkeletonizePackage" => ""))
+                project_path = joinpath(submission, "Project.toml")
+                project = SkeletonizePackage.TOML.parsefile(project_path)
+                delete!(project["deps"], "SkeletonizePackage")
+                open(project_path, "w") do io
+                    SkeletonizePackage.TOML.print(io, project)
+                end
+                result = grade_submission(reference, submission; student_id="s123", io=nothing)
+                @test isvalid(result)
+                @test result.csv_header == "student_id,status,hidden,public,total"
+                @test result.csv_row == expected_row
+                @test startswith(result.student_report, "# Student Feedback Report")
+                @test !isempty(result.html_report)
+                @test !isempty(result.gradescope_json)
+                @test first(result.test_results).passed == expected_count
+                @test all(r -> r.passed, result.criterion_results)
+                @test all(r -> r.passed, result.reference_test_results)
+                if name == "ReferenceOracleAssignment"
+                    @test length(result.reference_test_results) == 6
+                    tests = read(joinpath(reference, "test", "runtests.jl"), String)
+                    example = match(r"@hidden_test begin.*?\nend"s, tests).match
+                    for page in ("index.md", "requirements.md")
+                        @test occursin(example, read(joinpath(@__DIR__, "..", "docs", "src", page), String))
+                    end
+                end
+            end
+        end
+    end
+
+    @testset "generated grading guidance" begin
+        mktempdir() do tmp
+            reference = create_assignment(joinpath(tmp, "GuidanceAssignment"))
+            skeleton = generate_skeleton_package(reference, joinpath(tmp, "Skeleton");
+                validate=false, io=nothing)
+            readme = read(joinpath(reference, "README.md"), String)
+            plan = read(joinpath(reference, "GRADING_PLAN.md"), String)
+            checklist = read(joinpath(reference, "TEACHER_CHECKLIST.md"), String)
+            instructions = read(joinpath(skeleton, "STUDENT_INSTRUCTIONS.md"), String)
+            rubric = read(joinpath(skeleton, "RUBRIC.md"), String)
+            @test occursin("zero_on_failure=true", readme)
+            @test occursin("does not install dependencies", readme)
+            @test occursin("before sharing them", plan)
+            @test occursin("not an INC generation setting", plan)
+            @test occursin("Preserve original submissions", checklist)
+            @test occursin("hidden-test details", checklist)
+            @test occursin("outcomes separately from awarded marks", instructions)
+            @test occursin("Local `Pkg.test()`", instructions)
+            @test occursin("does not imply partial credit", rubric)
+            @test occursin("without hiding passing", rubric)
+            @test occursin("reports outcomes separately", read(joinpath(skeleton, "README.md"), String))
+        end
+    end
+
+    @testset "architecture configuration example" begin
+        architecture = read(joinpath(@__DIR__, "..", "ARCHITECTURE.md"), String)
+        example = match(r"```text\n(---\n\[assignment\].*?)\n```"s, architecture).captures[1]
+        mktempdir() do tmp
+            config_path = joinpath(tmp, "SkeletonizePackage.inc")
+            write(config_path, example)
+            config = read_assignment_config(config_path)
+            @test config.reference_path == tmp
+            @test basename(config.skeleton_path) == "SortingAssignmentStudent"
+            @test config.mode == :student
+            @test config.ai_policy == :recorded
+        end
+    end
+
     @testset "ValidationIssue and ValidationReport examples" begin
         issue = ValidationIssue(:warning, "test/runtests.jl", 3, "no @student_test blocks found", "Add visible tests.")
         @test sprint(show, issue) == "WARNING test/runtests.jl:3: no @student_test blocks found\n  suggestion: Add visible tests."
