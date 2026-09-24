@@ -7,6 +7,13 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+### Added
+
+- Expanded property-checker regression coverage for dispatch, invalid arguments,
+  source discovery, requirement/forbid inversion, determinism probes, multiline
+  exports, indexed mutation, and comment/string parsing edge cases. Tests live
+  in the existing test entry point and run in the normal CI coverage suite.
+
 ## 0.1.2 - 2026-09-24
 
 ### Upgrade Notes

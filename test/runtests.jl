@@ -390,6 +390,247 @@ end
     end
 end
 
+@testset "property dispatch and edge cases" begin
+    SP = SkeletonizePackage
+    project_from_text(text) = SP.SourceProject("", "PropertyFixture", Dict{String,String}(),
+        text, SP._source_functions(text))
+    project = project_from_text("""
+export documented,
+       shortform,
+       recursive_value
+using LinearAlgebra
+import Statistics: mean
+\"\"\"A docstring containing # text, not a comment.\"\"\"
+function documented(x::Int, scale=2)
+    global tally = x
+    push!([], x)
+    for i in 1:x
+        while i > 1
+            break
+        end
+    end
+    return x * scale
+end
+shortform(x) = x + 1
+function recursive_value(x)
+    return x <= 0 ? 0 : recursive_value(x - 1)
+end
+function pure(x)
+    return x + 1
+end
+function indexed(xs)
+    xs[1] = 2
+end
+# One source comment.
+""")
+    caller = Module(gensym(:PropertyProbes))
+    Core.eval(caller, quote
+        steady(x) = 2x
+        const visits = Int[]
+        function restricted(x)
+            push!(visits, x)
+            x < 0 && throw(DomainError(x))
+            return x * x
+        end
+        const counter = Ref(0)
+        changing(x) = (counter[] += 1)
+        const attempts = Ref(0)
+        function throws_second(x)
+            attempts[] += 1
+            iseven(attempts[]) && error("second call cannot be evaluated")
+            return x
+        end
+    end)
+
+    @testset "dispatch returns the expected property outcome" begin
+        cases = [
+            :(exported(documented)) => true,
+            :(exported(shortform)) => true,
+            :(exported(recursive_value)) => true,
+            :(exported(pure)) => false,
+            :(exists(shortform)) => true,
+            :(exists(missing_function)) => false,
+            :(signature(documented, 2)) => true,
+            :(signature(documented, 1)) => false,
+            :(docstring(documented)) => true,
+            :(docstring(pure)) => false,
+            :(imports(Statistics)) => true,
+            :(imports(DataFrames)) => false,
+            :(calls(push!)) => true,
+            :(calls(sort!)) => false,
+            :(calls(documented, push!)) => true,
+            :(calls(pure, push!)) => false,
+            :(calls(missing_function, push!)) => false,
+            :(uses(documented, "*")) => true,
+            :(uses(pure, "*")) => false,
+            :(uses(missing_function, "+")) => false,
+            :(recursive(recursive_value)) => true,
+            :(recursive(pure)) => false,
+            :(loop(documented)) => true,
+            :(loop(pure)) => false,
+            :(globals(documented)) => true,
+            :(globals(pure)) => false,
+            :(side_effects(documented)) => true,
+            :(side_effects(indexed)) => true,
+            :(side_effects(pure)) => false,
+            :(deterministic(steady)) => true,
+            :(deterministic(missing_function)) => false,
+            :(comments()) => true,
+            :(comments(min=1)) => true,
+            :(comments(min=2)) => false,
+            :(lines_of_code()) => true,
+            :(lines_of_code(max=100)) => true,
+            :(lines_of_code(max=0)) => false,
+            :(nested_loop_depth(max=2)) => true,
+            :(nested_loop_depth(max=1)) => false,
+            :(nested_loop_depth()) => false,
+        ]
+        for (spec, expected) in cases
+            @testset "$spec" begin
+                @test SP._property_holds(project, caller, spec) == expected
+            end
+        end
+        for invalid in (:exists, :(x = 1), :(unsupported_property(x)),
+                        :(exists()), :(exists(3)), :(signature(pure)),
+                        :(signature(pure, "one")), :(uses(pure)),
+                        :(uses(pure, 1)), :(comments(min="many")),
+                        :(lines_of_code(max="few")), :(nested_loop_depth(max="shallow")))
+            @test_throws ArgumentError SP._property_holds(project, caller, invalid)
+        end
+    end
+
+    @testset "property argument forms" begin
+        for arg in (QuoteNode(:target), :target, "target")
+            @test SP._symbol_arg([arg], 1) == :target
+        end
+        for args in ([], [1], [QuoteNode(1)], [:(f(x))])
+            @test_throws ArgumentError SP._symbol_arg(args, 1)
+        end
+        @test SP._int_arg([Int32(2)], 1) === 2
+        @test_throws ArgumentError SP._int_arg([], 1)
+        @test_throws ArgumentError SP._int_arg([2.5], 1)
+        for arg in (QuoteNode(:+), :+, "+")
+            @test SP._operator_arg([arg], 1) == "+"
+        end
+        @test_throws ArgumentError SP._operator_arg([], 1)
+        @test_throws ArgumentError SP._operator_arg([1], 1)
+        for head in (:(=), :kw)
+            @test SP._kw_int([Expr(head, :min, 3)], :min; default=1) == 3
+            @test_throws ArgumentError SP._kw_int([Expr(head, :min, "three")], :min; default=1)
+        end
+        @test SP._kw_int([:ignored, :(max=4)], :min; default=2) == 2
+        @test SP._kw_int([], :max; default=5) == 5
+    end
+
+    @testset "determinism probes" begin
+        @test SP._is_deterministic(caller, :steady)
+        @test SP._is_deterministic(caller, :restricted)
+        @test caller.visits == [-2, -1, 0, 0, 1, 1, 2, 2, 5, 5]
+        @test !SP._is_deterministic(caller, :changing)
+        @test caller.counter[] == 2
+        @test !SP._is_deterministic(caller, :throws_second)
+        @test caller.attempts[] == 2
+        @test !SP._is_deterministic(caller, :missing_function)
+    end
+
+    @testset "source headers and incomplete blocks" begin
+        @test SP._split_args(nothing) == String[]
+        @test SP._split_args("  ") == String[]
+        @test SP._split_args("x::Int, y = 2") == ["x", "y"]
+        @test SP._function_header("function empty()") == (:empty, String[])
+        @test SP._function_header("short(x::Int, y=2) = x + y") == (:short, ["x", "y"])
+        @test SP._function_header("x = 1") === nothing
+        @test project.functions[:documented].args == ["x", "scale"]
+        @test project.functions[:shortform].args == ["x"]
+        @test project.functions[:shortform].text == "shortform(x) = x + 1"
+        @test occursin("return x * scale", SP._function_body(project, :documented))
+        @test !occursin("shortform", SP._function_body(project, :documented))
+        @test SP._function_body(project, :missing_function) === nothing
+        unfinished = ["function unfinished(x)", "    x + 1"]
+        @test SP._collect_source_block(unfinished, 1) == (["    x + 1"], 2)
+        nested = ["function outer(x)", "    function inner(y)", "        y + 1",
+                  "    end", "    inner(x)", "end"]
+        @test SP._collect_source_block(nested, 1) == (nested[2:5], 6)
+        @test Set(keys(SP._source_functions(join(nested, '\n')))) == Set([:outer, :inner])
+    end
+
+    @testset "source discovery and requirement inversion" begin
+        mktempdir() do root
+            empty_project = SP._source_project_from_path(root)
+            @test empty_project.module_name == basename(root)
+            @test isempty(empty_project.files)
+            @test isempty(empty_project.functions)
+            mkpath(joinpath(root, "src", "nested"))
+            write(joinpath(root, "Project.toml"), "name = \"OnDiskProperties\"\n")
+            write(joinpath(root, "src", "OnDiskProperties.jl"), "top() = 1\n")
+            write(joinpath(root, "src", "nested", "helpers.jl"), "helper(x) = x\n")
+            write(joinpath(root, "src", "ignored.txt"), "not_source() = 0\n")
+            on_disk = SP._source_project_from_path(root)
+            @test on_disk.module_name == "OnDiskProperties"
+            @test Set(keys(on_disk.files)) == Set([joinpath("src", "OnDiskProperties.jl"), joinpath("src", "nested", "helpers.jl")])
+            @test Set(keys(on_disk.functions)) == Set([:top, :helper])
+        end
+        discovery = Module(gensym(:PropertyDiscovery))
+        Core.eval(discovery, :(const SkeletonizePackage = $SP))
+        Core.eval(discovery, :(const local_module = $caller))
+        Core.eval(discovery, :(const value = 1))
+        Core.eval(discovery, :(export SkeletonizePackage, local_module, value, undefined_binding))
+        @test SP._source_project_root(discovery) == pkgdir(SP)
+        @test SP._source_project(discovery).root == pkgdir(SP)
+        @test SP._check_property(discovery, :require, :(exists(_check_property)))
+        @test !SP._check_property(discovery, :forbid, :(exists(_check_property)))
+        @test !SP._check_property(discovery, :require, :(exists(nonexistent_property_fixture)))
+        @test SP._check_property(discovery, :forbid, :(exists(nonexistent_property_fixture)))
+        @test_throws ArgumentError SP._check_property(discovery, :invalid, :(exists(_check_property)))
+        Core.eval(discovery, :(const SourceDependency = $(SP.TOML)))
+        Core.eval(discovery, :(export SourceDependency))
+        @test SP._source_project_root(discovery) == pkgdir(SP.TOML)
+    end
+
+    @testset "comments, strings, and structural boundaries" begin
+        for (text, expected) in [
+            "#= outer #= inner =# outer =#" => 2,
+            "#= outer\n# line inside block\n=#\n# line" => 2,
+            "x = \"escaped \\\" # hidden\" # real" => 1,
+            "x = \"\"\"doc\n# hidden\n\"\"\"\n# real" => 1,
+            "# last line without newline" => 1,
+            "#= unfinished block" => 1,
+            "\"unfinished # string" => 0,
+            "\"\"\"unfinished # docstring" => 0,
+        ]
+            @test SP._comment_count(project_from_text(text)) == expected
+        end
+        for hidden in ("\"escaped \\\" quote # text\"", "\"ends with escape\\",
+                       "\"line\nnext\"", "\"line\\\nnext\"", "\"\"\"unfinished\n",
+                       "#= outer\n#= inner =#\n=#", "# last comment", "\"unterminated", "\"\u03c0\"")
+            expected = join(c == '\n' ? "\n" : " " for c in hidden)
+            @test SP._strip_code_noise(hidden) == expected
+        end
+        @test SP._strip_code_noise("") == ""
+        @test SP._lines_of_code(project_from_text(" \n# comment\nx=1 # inline\n\ny=2\n")) == 2
+        @test SP._lines_of_code(project_from_text("# comment\n\n")) == 0
+        @test SP._nested_loop_depth("while ready\nend\nfor x in xs\nend\nend") == 1
+        @test SP._nested_loop_depth("# for x in xs\n\"while ready\"\nend") == 0
+        noise = project_from_text("""
+# export fake
+# using DataFrames
+function quiet(x)
+    # global count; sort!(x); for item in x; x * 2
+    \"push!(x, 1); while true; global count; *\"
+    return x
+end
+""")
+        @test !SP._is_exported(noise, :fake)
+        @test !SP._has_import(noise, :DataFrames)
+        @test !SP._calls(noise, :quiet, :sort!)
+        @test !SP._calls(noise, nothing, :push!)
+        @test !SP._has_loop(noise, :quiet)
+        @test !SP._has_global(noise, :quiet)
+        @test !SP._has_side_effects(noise, :quiet)
+        @test !SP._uses_operator(noise, :quiet, "*")
+    end
+end
+
 @testset "strip_reference_annotations" begin
     src = """
 module Demo
