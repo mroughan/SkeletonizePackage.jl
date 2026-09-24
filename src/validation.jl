@@ -225,7 +225,8 @@ function _validate_reference_tests!(issues, root::String)
     stdout_path = tempname()
     stderr_path = tempname()
     try
-        cmd = `$(Base.julia_cmd()) --startup-file=no -e $script`
+        grader_project = something(Base.active_project(), joinpath(@__DIR__, "..", "Project.toml"))
+        cmd = `$( _julia_cmd_with_project(dirname(grader_project)) ) --startup-file=no -e $script`
         proc, timed_out = _run_with_timeout(cmd, stdout_path, stderr_path; timeout_seconds=120)
         success(proc) && !timed_out && return
         output = strip(read(stdout_path, String) * "\n" * read(stderr_path, String))

@@ -115,6 +115,21 @@ julia --project -e 'using Pkg; Pkg.test(; coverage=true)'
 Generated `.cov` files are local artifacts and should be removed before
 committing.
 
+## Release Preparation
+
+Set the package version in the root `Project.toml` and move completed changelog
+entries under a matching dated release heading, leaving `Unreleased` for future
+work. Call out scoring changes and migration steps explicitly. Example assignment
+versions and generated assignment defaults are independent of the package version.
+The release-metadata test checks that the package and latest changelog version agree.
+
+Run the package tests, quality checks, and documentation build before publishing.
+Inspect `git status --short` and ensure new tests and referenced source files are
+included in the release commit; a locally passing suite can otherwise depend on
+untracked files absent from a checkout. Local manifests and documentation build
+artifacts are not release source files. Committing, tagging, registration, and
+publishing are separate maintainer actions, not part of local release preparation.
+
 ## Pull Requests
 
 Before opening a pull request:

@@ -7,6 +7,18 @@ and uses semantic versioning once releases begin.
 
 ## Unreleased
 
+## 0.1.2 - 2026-09-24
+
+### Upgrade Notes
+
+- Review existing assessment policies before regrading: proportional group credit
+  is now the default. Use `@marks ... all_or_nothing=true` for an explicit
+  all-or-nothing group, or `zero_on_failure=true` for whole-assignment zeroing.
+- Awarded scores and totals can be fractional (`Float64`). Downstream report and
+  CSV consumers must not assume integer marks. Possible points remain integers.
+- Regenerate assignment guidance when adopting the new policy; existing reference
+  packages and student submissions are not rewritten automatically.
+
 ### Changed (proportional group scoring)
 
 - Breaking scoring change: each marked group now earns credit proportional to
@@ -28,16 +40,13 @@ and uses semantic versioning once releases begin.
 - Updated API docs, generated assignment guidance, README, architecture, and the
   documentation site. Added regression coverage and mirrored docstring examples.
 
-### Fixed (default withholding explanation)
+### Fixed (release validation)
 
-- Before the proportional-scoring change above, default whole-run withholding gained a
-  `BEHAVIORAL MARKS WITHHELD` notice, identifying the triggering checks and
-  locations in reports and brief summaries even when no fatal rule applies.
-- Passing criteria link their withheld marks to that notice. Property points,
-  forbidden-code findings, and whole-assignment zero policies are distinguished;
-  scoring behavior is unchanged.
-- Added coverage for default withholding, reference-oracle problems, absence of
-  false fatal-rule notices, and zero totals without a whole-assignment gate.
+- Reference-validation subprocesses explicitly inherit the examiner's active
+  project, so SkeletonizePackage and test tooling remain available when the
+  default Julia environment is empty or a project was activated dynamically.
+- Added regression checks for isolated validation environments and agreement
+  between package metadata and the latest dated changelog version.
 
 ### Changed (student feedback tone)
 
@@ -46,7 +55,8 @@ and uses semantic versioning once releases begin.
 - Criterion, property, and reference feedback uses descriptive wording. The
   HTML failure-category banner is removed; technical diagnostics remain in
   Test Output, and whole-assignment zero notices still identify their causes.
-- Scores, machine-readable statuses, CSV values, and CLI exit codes are unchanged.
+- Machine-readable statuses and CLI exit codes retain their meanings; awarded
+  scores and CSV values reflect the proportional-scoring changes above.
 - Added tests for mixed outcomes, interrupted and skipped checks, retained
   zero-policy explanations, and neutral Markdown/HTML presentation.
 

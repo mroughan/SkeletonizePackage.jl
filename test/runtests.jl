@@ -99,6 +99,20 @@ using Test
     return reference, submission
 end
 
+@testset "release metadata" begin
+    root = dirname(@__DIR__)
+    project = SkeletonizePackage.TOML.parsefile(joinpath(root, "Project.toml"))
+    version = VersionNumber(project["version"])
+    @test Base.pkgversion(SkeletonizePackage) == version
+    changelog = read(joinpath(root, "CHANGELOG.md"), String)
+    @test occursin("## Unreleased\n", changelog)
+    latest_release = match(r"(?m)^## (\d+\.\d+\.\d+) - (\d{4}-\d{2}-\d{2})$", changelog)
+    @test latest_release !== nothing
+    if latest_release !== nothing
+        @test VersionNumber(latest_release.captures[1]) == version
+    end
+end
+
 @testset "cli entry point" begin
     tmp = mktempdir()
 
@@ -656,6 +670,11 @@ end
 
     passing = sprint(show, validate_reference_package(src; run_tests=true))
     @test !occursin("reference behavioural tests failed", passing)
+
+    isolated = withenv("JULIA_PROJECT" => mktempdir()) do
+        sprint(show, validate_reference_package(src; run_tests=true))
+    end
+    @test !occursin("reference behavioural tests failed", isolated)
 
     write(source_path, replace(read(source_path, String), "answer() = 1" => "answer() = 0"))
     failing = sprint(show, validate_reference_package(src; run_tests=true))
